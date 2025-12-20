@@ -103,6 +103,11 @@ export const useXterm = ({
       return undefined;
     }
 
+    const rect = container.getBoundingClientRect();
+    if (rect.width === 0 || rect.height === 0) {
+      return undefined;
+    }
+
     const theme = buildTerminalTheme(initialModeRef.current);
     const baseOptions = createTerminalOptions(theme);
 
@@ -117,16 +122,36 @@ export const useXterm = ({
     terminalRef.current = xterm;
 
     xterm.loadAddon(fitAddon);
-    xterm.open(container);
 
-    setIsReady(true);
+    let openFrameId: number | null = null;
+
+    openFrameId = requestAnimationFrame(() => {
+      openFrameId = null;
+      if (!container.isConnected || terminalRef.current !== xterm) {
+        return;
+      }
+      try {
+        xterm.open(container);
+        setIsReady(true);
+      } catch {
+        terminalRef.current = null;
+        hasInitializedRef.current = false;
+      }
+    });
 
     return () => {
+      if (openFrameId !== null) {
+        cancelAnimationFrame(openFrameId);
+      }
       inputHandlerRef.current?.dispose();
       inputHandlerRef.current = null;
       fitAddonRef.current = null;
       terminalRef.current = null;
-      xterm.dispose();
+      try {
+        xterm.dispose();
+      } catch {
+        // Ignore dispose errors
+      }
       setIsReady(false);
       hasInitializedRef.current = false;
     };
@@ -156,16 +181,34 @@ export const useXterm = ({
       return;
     }
 
+    const terminalCore = (
+      terminal as unknown as {
+        _core?: {
+          _renderService?: {
+            _renderer?: { value?: unknown };
+          };
+        };
+      }
+    )._core;
+    const renderer = terminalCore?._renderService?._renderer?.value;
+    if (!renderer) {
+      return;
+    }
+
     const { cols, rows, ...mutableOptions } = terminal.options as ITerminalOptions &
       ITerminalInitOnlyOptions;
     void cols;
     void rows;
 
-    terminal.options = {
-      ...(mutableOptions as ITerminalOptions),
-      disableStdin,
-      theme: buildTerminalTheme(mode),
-    };
+    try {
+      terminal.options = {
+        ...(mutableOptions as ITerminalOptions),
+        disableStdin,
+        theme: buildTerminalTheme(mode),
+      };
+    } catch {
+      return;
+    }
 
     if (isReady && isVisible) {
       const frame = requestAnimationFrame(() => {
