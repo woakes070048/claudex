@@ -127,6 +127,13 @@ class Settings(BaseSettings):
     # E2B Sandbox configuration
     E2B_TEMPLATE_ID: str = "hg02z8aexvw928qvuq87"
 
+    # Docker Sandbox configuration
+    SANDBOX_PROVIDER: str = "e2b"  # "e2b" or "docker"
+    DOCKER_IMAGE: str = "claudex-sandbox:latest"
+    DOCKER_NETWORK: str = "claudex-sandbox-net"
+    DOCKER_HOST: str | None = None
+    DOCKER_PREVIEW_BASE_URL: str = "http://localhost"
+
     # Security Headers Configuration
     ENABLE_SECURITY_HEADERS: bool = True
     HSTS_MAX_AGE: int = 31536000

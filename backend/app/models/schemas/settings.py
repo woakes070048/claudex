@@ -82,6 +82,7 @@ class UserSettingsBase(BaseModel):
     custom_skills: list[CustomSkill] | None = None
     custom_slash_commands: list[CustomSlashCommand] | None = None
     notification_sound_enabled: bool = True
+    sandbox_provider: Literal["e2b", "docker"] = "docker"
 
     @field_validator(
         "custom_agents",

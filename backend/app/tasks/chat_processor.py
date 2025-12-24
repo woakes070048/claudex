@@ -24,6 +24,7 @@ from app.models.db_models import Chat, Message, MessageStreamStatus, User
 from app.services.claude_agent import ClaudeAgentService
 from app.services.exceptions import ClaudeAgentException, UserException
 from app.services.sandbox import SandboxService
+from app.services.sandbox_providers import create_sandbox_provider
 from app.services.streaming.events import StreamEvent
 from app.services.user import UserService
 
@@ -548,7 +549,7 @@ async def process_chat_stream(  # type: ignore[return]
         await _cleanup_task_resources(chat_id, redis_client)
 
 
-async def _initialize_and_process_chat(  # type: ignore[return]
+async def _initialize_and_process_chat(
     task: Any,
     prompt: str,
     system_prompt: str,
@@ -573,14 +574,18 @@ async def _initialize_and_process_chat(  # type: ignore[return]
             except UserException:
                 raise UserException("User settings not found")
 
-            if not user_settings.e2b_api_key:
-                raise UserException("E2B API key is not configured for this user")
+            provider_type = (
+                chat_data.get("sandbox_provider") or user_settings.sandbox_provider
+            )
+            provider = create_sandbox_provider(
+                provider_type=provider_type,
+                api_key=user_settings.e2b_api_key,
+            )
 
-            e2b_api_key = user_settings.e2b_api_key
-
-        async with SandboxService(
-            e2b_api_key=e2b_api_key, session_factory=SessionFactory
-        ) as sandbox_service:
+        sandbox_service = SandboxService(
+            provider=provider, session_factory=SessionFactory
+        )
+        try:
             return await process_chat_stream(
                 task,
                 prompt=prompt,
@@ -596,6 +601,8 @@ async def _initialize_and_process_chat(  # type: ignore[return]
                 attachments=attachments,
                 sandbox_service=sandbox_service,
             )
+        finally:
+            await sandbox_service.cleanup()
 
 
 @celery_app.task(bind=True)

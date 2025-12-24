@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Settings as SettingsIcon, AlertCircle, FileText, FileArchive } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import type { UserSettings, UserSettingsUpdate } from '@/types';
+import type { UserSettings, UserSettingsUpdate, SandboxProvider } from '@/types';
 import {
   useSettingsQuery,
   useUpdateSettingsMutation,
@@ -75,6 +75,7 @@ const createFallbackSettings = (): UserSettings => ({
   custom_skills: null,
   custom_slash_commands: null,
   notification_sound_enabled: true,
+  sandbox_provider: 'docker',
   created_at: new Date().toISOString(),
   updated_at: new Date().toISOString(),
 });
@@ -178,6 +179,7 @@ const SettingsPage: React.FC = () => {
         'custom_skills',
         'custom_slash_commands',
         'notification_sound_enabled',
+        'sandbox_provider',
       ];
 
       for (const field of fields) {
@@ -354,6 +356,10 @@ const SettingsPage: React.FC = () => {
     persistSettings((prev) => ({ ...prev, notification_sound_enabled: enabled }));
   };
 
+  const handleSandboxProviderChange = (provider: SandboxProvider | null) => {
+    persistSettings((prev) => ({ ...prev, sandbox_provider: provider }));
+  };
+
   const sidebarContent = useMemo(
     () => (
       <Sidebar
@@ -500,6 +506,7 @@ const SettingsPage: React.FC = () => {
                     onToggleVisibility={toggleFieldVisibility}
                     onDeleteAllChats={handleDeleteAllChats}
                     onNotificationSoundChange={handleNotificationSoundChange}
+                    onSandboxProviderChange={handleSandboxProviderChange}
                   />
                 </div>
               )}
