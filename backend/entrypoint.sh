@@ -16,14 +16,24 @@ if [ "$MODE" = "api" ]; then
     cd /app && python seed_data.py
 
     echo "Starting API server..."
-    exec gosu appuser sh -c "ulimit -s 65536 && exec granian --interface asgi app.main:app --host 0.0.0.0 --port ${PORT:-8080} --workers $(nproc) --runtime-threads 32 --runtime-mode mt"
+    if [ -S /var/run/docker.sock ]; then
+        echo "Docker socket detected, running as current user for Docker access..."
+        exec sh -c "ulimit -s 65536 && exec granian --interface asgi app.main:app --host 0.0.0.0 --port ${PORT:-8080} --workers $(nproc) --runtime-threads 32 --runtime-mode mt"
+    else
+        exec gosu appuser sh -c "ulimit -s 65536 && exec granian --interface asgi app.main:app --host 0.0.0.0 --port ${PORT:-8080} --workers $(nproc) --runtime-threads 32 --runtime-mode mt"
+    fi
 fi
 
 if [ "$MODE" = "celery-worker" ]; then
     echo "Starting Celery worker..."
     CELERY_CONCURRENCY=${CELERY_CONCURRENCY:-25}
     echo "Celery concurrency set to: $CELERY_CONCURRENCY"
-    exec gosu appuser celery -A app.core.celery worker --pool=threads --concurrency=$CELERY_CONCURRENCY --loglevel=${LOG_LEVEL:-DEBUG}
+    if [ -S /var/run/docker.sock ]; then
+        echo "Docker socket detected, running as current user for Docker access..."
+        exec celery -A app.core.celery worker --pool=threads --concurrency=$CELERY_CONCURRENCY --loglevel=${LOG_LEVEL:-DEBUG}
+    else
+        exec gosu appuser celery -A app.core.celery worker --pool=threads --concurrency=$CELERY_CONCURRENCY --loglevel=${LOG_LEVEL:-DEBUG}
+    fi
 fi
 
 if [ "$MODE" = "celery-beat" ]; then

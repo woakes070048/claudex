@@ -1,5 +1,5 @@
-import { Button, Switch } from '@/components/ui';
-import type { UserSettings, GeneralSecretFieldConfig, ApiFieldKey } from '@/types';
+import { Button, Select, Switch } from '@/components/ui';
+import type { UserSettings, GeneralSecretFieldConfig, ApiFieldKey, SandboxProvider } from '@/types';
 import { SecretInput } from '@/components/settings/inputs/SecretInput';
 
 interface GeneralSettingsTabProps {
@@ -10,6 +10,7 @@ interface GeneralSettingsTabProps {
   onToggleVisibility: (field: ApiFieldKey) => void;
   onDeleteAllChats: () => void;
   onNotificationSoundChange: (enabled: boolean) => void;
+  onSandboxProviderChange: (provider: SandboxProvider | null) => void;
 }
 
 export const GeneralSettingsTab: React.FC<GeneralSettingsTabProps> = ({
@@ -20,6 +21,7 @@ export const GeneralSettingsTab: React.FC<GeneralSettingsTabProps> = ({
   onToggleVisibility,
   onDeleteAllChats,
   onNotificationSoundChange,
+  onSandboxProviderChange,
 }) => (
   <div className="space-y-6">
     <div>
@@ -27,6 +29,36 @@ export const GeneralSettingsTab: React.FC<GeneralSettingsTabProps> = ({
         Sandbox Environment
       </h2>
       <div className="space-y-4">
+        <div>
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-sm font-medium text-text-primary dark:text-text-dark-primary">
+                Sandbox Provider
+              </h3>
+              <p className="mt-0.5 text-xs text-text-tertiary dark:text-text-dark-tertiary">
+                Choose between cloud (E2B) or local (Docker) sandbox execution.
+              </p>
+            </div>
+          </div>
+          <div className="mt-2 max-w-xs">
+            <Select
+              value={settings.sandbox_provider ?? 'e2b'}
+              onChange={(e) =>
+                onSandboxProviderChange(
+                  e.target.value === 'e2b' || e.target.value === 'docker' ? e.target.value : null,
+                )
+              }
+            >
+              <option value="e2b">E2B (Cloud)</option>
+              <option value="docker">Docker (Local)</option>
+            </Select>
+            <p className="mt-1 text-xs text-text-tertiary dark:text-text-dark-tertiary">
+              {settings.sandbox_provider === 'docker'
+                ? 'Local Docker requires Docker daemon running on your server.'
+                : 'E2B requires an API key configured below.'}
+            </p>
+          </div>
+        </div>
         {fields.map((field) => (
           <div key={field.key}>
             <div className="flex items-center justify-between">

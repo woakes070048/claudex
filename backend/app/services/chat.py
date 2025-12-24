@@ -112,27 +112,12 @@ class ChatService(BaseDbService[Chat]):
             )
 
     async def create_chat(self, user: User, chat_data: ChatCreate) -> Chat:
-        can_continue = await self.user_service.check_message_limit(user.id)
-        if not can_continue:
-            raise ChatException(
-                "Daily message limit exceeded. You have reached your daily message limit.",
-                error_code=ErrorCode.CHAT_DAILY_LIMIT_EXCEEDED,
-                details={"user_id": str(user.id)},
-                status_code=429,
-            )
+        await self._check_message_limit(user.id)
 
         user_settings = cast(
             UserSettings, await self.user_service.get_user_settings(user.id)
         )
-        try:
-            validate_e2b_api_key(user_settings)
-            await validate_model_api_keys(
-                user_settings, chat_data.model_id, self.session_factory
-            )
-        except APIKeyValidationError as e:
-            raise ChatException(
-                str(e), error_code=ErrorCode.API_KEY_MISSING, status_code=400
-            ) from e
+        await self._validate_api_keys(user_settings, chat_data.model_id)
 
         sandbox_id = await self.sandbox_service.create_sandbox()
 
@@ -159,6 +144,7 @@ class ChatService(BaseDbService[Chat]):
                 title=self._truncate_title(chat_data.title),
                 user_id=user.id,
                 sandbox_id=sandbox_id,
+                sandbox_provider=user_settings.sandbox_provider,
             )
 
             db.add(chat)
@@ -383,25 +369,10 @@ class ChatService(BaseDbService[Chat]):
                 status_code=400,
             )
 
-        can_continue = await self.user_service.check_message_limit(current_user.id)
-        if not can_continue:
-            raise ChatException(
-                "Daily message limit exceeded. You have reached your daily message limit.",
-                error_code=ErrorCode.CHAT_DAILY_LIMIT_EXCEEDED,
-                details={"user_id": str(current_user.id)},
-                status_code=429,
-            )
+        await self._check_message_limit(current_user.id)
 
         user_settings = await self.user_service.get_user_settings(current_user.id)
-        try:
-            validate_e2b_api_key(user_settings)
-            await validate_model_api_keys(
-                user_settings, request.model_id, self.session_factory
-            )
-        except APIKeyValidationError as e:
-            raise ChatException(
-                str(e), error_code=ErrorCode.API_KEY_MISSING, status_code=400
-            ) from e
+        await self._validate_api_keys(user_settings, request.model_id)
 
         chat = await self.get_chat(request.chat_id, current_user)
 
@@ -544,6 +515,28 @@ class ChatService(BaseDbService[Chat]):
         if len(title) <= CHAT_TITLE_MAX_LENGTH:
             return title
         return title[:CHAT_TITLE_MAX_LENGTH] + "..."
+
+    async def _check_message_limit(self, user_id: UUID) -> None:
+        can_continue = await self.user_service.check_message_limit(user_id)
+        if not can_continue:
+            raise ChatException(
+                "Daily message limit exceeded. You have reached your daily message limit.",
+                error_code=ErrorCode.CHAT_DAILY_LIMIT_EXCEEDED,
+                details={"user_id": str(user_id)},
+                status_code=429,
+            )
+
+    async def _validate_api_keys(
+        self, user_settings: UserSettings, model_id: str
+    ) -> None:
+        try:
+            if user_settings.sandbox_provider == "e2b":
+                validate_e2b_api_key(user_settings)
+            await validate_model_api_keys(user_settings, model_id, self.session_factory)
+        except APIKeyValidationError as e:
+            raise ChatException(
+                str(e), error_code=ErrorCode.API_KEY_MISSING, status_code=400
+            ) from e
 
     async def _create_assistant_message(self, chat: Chat, model_id: str) -> Message:
         return await self.message_service.create_message(

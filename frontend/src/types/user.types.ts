@@ -69,6 +69,8 @@ export interface CustomCommand {
     | null;
 }
 
+export type SandboxProvider = 'e2b' | 'docker';
+
 export interface UserSettings {
   id: string;
   user_id: string;
@@ -84,6 +86,7 @@ export interface UserSettings {
   custom_skills: CustomSkill[] | null;
   custom_slash_commands: CustomCommand[] | null;
   notification_sound_enabled?: boolean;
+  sandbox_provider: SandboxProvider;
   created_at: string;
   updated_at: string;
 }

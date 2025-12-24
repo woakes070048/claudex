@@ -23,9 +23,9 @@ from app.models.db_models import Chat, User, UserSettings
 from app.models.db_models.enums import ModelProvider
 from app.prompts.enhance_prompt import get_enhance_prompt
 from app.services.ai_model import AIModelService
-from app.services.e2b_transport import E2BSandboxTransport
+from app.services.transports import DockerSandboxTransport, E2BSandboxTransport
 from app.services.exceptions import ClaudeAgentException
-from app.services.sandbox import SandboxService
+from app.services.sandbox_providers import SandboxProviderType, create_docker_config
 from app.services.streaming.events import StreamEvent
 from app.services.streaming.processor import StreamProcessor
 from app.services.tool_handler import ToolHandlerRegistry
@@ -104,7 +104,9 @@ class ClaudeAgentService:
         self.tool_registry = ToolHandlerRegistry()
         self.session_factory = session_factory or SessionLocal
         self._total_cost_usd = 0.0
-        self._active_transport: E2BSandboxTransport | None = None
+        self._active_transport: E2BSandboxTransport | DockerSandboxTransport | None = (
+            None
+        )
 
     async def __aenter__(self) -> Self:
         return self
@@ -125,6 +127,42 @@ class ClaudeAgentService:
             if exc_type is None:
                 raise
         return False
+
+    def _create_sandbox_transport(
+        self,
+        sandbox_provider: str,
+        sandbox_id: str,
+        prompt_iterable: AsyncIterator[dict[str, Any]],
+        options: ClaudeAgentOptions,
+        user_settings: UserSettings | None = None,
+        e2b_api_key: str | None = None,
+    ) -> E2BSandboxTransport | DockerSandboxTransport:
+        if sandbox_provider == SandboxProviderType.DOCKER:
+            docker_config = create_docker_config()
+            return DockerSandboxTransport(
+                sandbox_id=sandbox_id,
+                docker_config=docker_config,
+                prompt=prompt_iterable,
+                options=options,
+            )
+
+        if e2b_api_key is None and user_settings is not None:
+            try:
+                e2b_api_key = validate_e2b_api_key(user_settings)
+            except APIKeyValidationError as e:
+                raise ClaudeAgentException(str(e)) from e
+
+        if e2b_api_key is None:
+            raise ClaudeAgentException(
+                "E2B API key is required for E2B sandbox provider"
+            )
+
+        return E2BSandboxTransport(
+            sandbox_id=sandbox_id,
+            api_key=e2b_api_key,
+            prompt=prompt_iterable,
+            options=options,
+        )
 
     async def get_ai_stream(
         self,
@@ -149,6 +187,8 @@ class ClaudeAgentService:
         self.current_chat_id = chat_id
         self._total_cost_usd = 0.0
 
+        sandbox_provider = user_settings.sandbox_provider
+
         options = await self._build_claude_options(
             user=user,
             user_settings=user_settings,
@@ -158,6 +198,7 @@ class ClaudeAgentService:
             session_id=session_id,
             thinking_mode=thinking_mode,
             chat_id=chat_id,
+            sandbox_provider=sandbox_provider,
         )
 
         user_prompt = self.prepare_user_prompt(prompt, custom_instructions, attachments)
@@ -166,66 +207,71 @@ class ClaudeAgentService:
             raise ClaudeAgentException(
                 "Chat does not have an associated sandbox environment"
             )
-        try:
-            e2b_api_key = validate_e2b_api_key(user_settings)
-        except APIKeyValidationError as e:
-            raise ClaudeAgentException(str(e)) from e
-
         sandbox_id_str = str(sandbox_id)
-        async with SandboxService(e2b_api_key):
-            prompt_message = {
-                "type": "user",
-                "message": {"role": "user", "content": user_prompt},
-                "parent_tool_use_id": None,
-                "session_id": session_id,
-            }
 
-            prompt_iterable = self._create_prompt_iterable(prompt_message)
+        prompt_message = {
+            "type": "user",
+            "message": {"role": "user", "content": user_prompt},
+            "parent_tool_use_id": None,
+            "session_id": session_id,
+        }
+        prompt_iterable = self._create_prompt_iterable(prompt_message)
 
-            async with E2BSandboxTransport(
-                sandbox_id=sandbox_id_str,
-                api_key=e2b_api_key,
-                prompt=prompt_iterable,
-                options=options,
-            ) as transport:
-                self._active_transport = transport
+        transport = self._create_sandbox_transport(
+            sandbox_provider=sandbox_provider,
+            sandbox_id=sandbox_id_str,
+            prompt_iterable=prompt_iterable,
+            options=options,
+            user_settings=user_settings,
+        )
+        e2b_api_key = (
+            user_settings.e2b_api_key
+            if sandbox_provider != SandboxProviderType.DOCKER
+            else None
+        )
 
-                processor = StreamProcessor(
-                    tool_registry=self.tool_registry,
-                    session_handler=self._create_session_handler(session_callback),
-                )
+        async with transport:
+            self._active_transport = transport
 
-                try:
-                    async with ClaudeSDKClient(
-                        options=options, transport=transport
-                    ) as client:
-                        await client.query(prompt_iterable)
-                        async for message in client.receive_response():
-                            for event in processor.emit_events_for_message(message):
-                                if event:
-                                    yield event
-                                    if (
-                                        event.get("tool", {}).get("name")
-                                        == "ExitPlanMode"
-                                    ):
-                                        await client.set_permission_mode("auto")
-
-                    self._total_cost_usd = processor.total_cost_usd
-
-                except ClaudeSDKError as e:
-                    raise ClaudeAgentException(f"Claude SDK error: {str(e)}")
-
-                finally:
-                    self._active_transport = None
-            if self.current_session_id:
-                options.resume = self.current_session_id
-            token_usage = await self._get_context_token_usage(
-                options,
-                sandbox_id=sandbox_id_str,
-                e2b_api_key=e2b_api_key,
+            processor = StreamProcessor(
+                tool_registry=self.tool_registry,
+                session_handler=self._create_session_handler(session_callback),
             )
-            if token_usage is not None:
-                await self._update_chat_token_usage(chat_id, token_usage)
+
+            try:
+                async with ClaudeSDKClient(
+                    options=options, transport=transport
+                ) as client:
+                    await client.query(prompt_iterable)
+                    async for message in client.receive_response():
+                        for event in processor.emit_events_for_message(message):
+                            if event:
+                                yield event
+                                if event.get("tool", {}).get("name") == "ExitPlanMode":
+                                    await client.set_permission_mode("auto")
+
+                self._total_cost_usd = processor.total_cost_usd
+
+            except ClaudeSDKError as e:
+                raise ClaudeAgentException(f"Claude SDK error: {str(e)}")
+
+            finally:
+                self._active_transport = None
+
+        if self.current_session_id:
+            options.resume = self.current_session_id
+
+        token_usage = await self._get_context_token_usage(
+            options,
+            sandbox_id=sandbox_id_str,
+            sandbox_provider=sandbox_provider,
+            e2b_api_key=e2b_api_key
+            if sandbox_provider != SandboxProviderType.DOCKER
+            else None,
+        )
+
+        if token_usage is not None:
+            await self._update_chat_token_usage(chat_id, token_usage)
 
     def get_total_cost_usd(self) -> float:
         return self._total_cost_usd
@@ -294,19 +340,32 @@ class ClaudeAgentService:
             raise ClaudeAgentException(f"Failed to enhance prompt: {str(e)}")
 
     def _build_permission_server(
-        self, permission_mode: str, chat_id: str
+        self, permission_mode: str, chat_id: str, sandbox_provider: str = "docker"
     ) -> dict[str, Any]:
         # MCP permission server runs inside the E2B sandbox and makes HTTP requests
         # to our backend API for user approval flows. For local development, this
         # requires a tunnel (ngrok, cloudflare) since the sandbox can't reach localhost.
+        # Docker sandboxes use host.docker.internal to reach the host machine.
         chat_token = create_chat_scoped_token(chat_id)
+
+        if sandbox_provider == SandboxProviderType.DOCKER:
+            base_url = settings.BASE_URL
+            port = (
+                base_url.rsplit(":", maxsplit=1)[-1].rstrip("/")
+                if ":" in base_url
+                else "8080"
+            )
+            api_base_url = f"http://host.docker.internal:{port}"
+        else:
+            api_base_url = settings.BASE_URL
+
         return {
             "command": "python3",
             "args": ["-u", "/usr/local/bin/permission_server.py"],
             "env": {
                 "PYTHONUNBUFFERED": "1",
                 "PERMISSION_MODE": permission_mode,
-                "API_BASE_URL": settings.BASE_URL,
+                "API_BASE_URL": api_base_url,
                 "CHAT_TOKEN": chat_token,
                 "CHAT_ID": chat_id,
             },
@@ -351,13 +410,16 @@ class ClaudeAgentService:
         permission_mode: str,
         chat_id: str,
         use_zai_mcp: bool,
+        sandbox_provider: str = "docker",
     ) -> dict[str, Any]:
         user_settings = await UserService(
             session_factory=self.session_factory
         ).get_user_settings(user.id)
 
         servers = {
-            "permission": self._build_permission_server(permission_mode, chat_id)
+            "permission": self._build_permission_server(
+                permission_mode, chat_id, sandbox_provider
+            )
         }
 
         if use_zai_mcp and user_settings.z_ai_api_key:
@@ -429,6 +491,7 @@ class ClaudeAgentService:
         session_id: str | None,
         thinking_mode: str | None,
         chat_id: str,
+        sandbox_provider: str = "docker",
     ) -> ClaudeAgentOptions:
         env, provider = await self._build_auth_env(model_id, user_settings)
 
@@ -469,7 +532,11 @@ class ClaudeAgentService:
             model=model_id,
             disallowed_tools=disallowed_tools,
             mcp_servers=await self._get_mcp_servers(
-                user, permission_mode, chat_id, provider == ModelProvider.ZAI
+                user,
+                permission_mode,
+                chat_id,
+                provider == ModelProvider.ZAI,
+                sandbox_provider,
             ),
             cwd="/home/user",
             user="user",
@@ -533,7 +600,11 @@ class ClaudeAgentService:
             logger.error("Failed to update chat token usage: %s", e)
 
     async def _get_context_token_usage(
-        self, options: ClaudeAgentOptions, sandbox_id: str, e2b_api_key: str
+        self,
+        options: ClaudeAgentOptions,
+        sandbox_id: str,
+        sandbox_provider: str,
+        e2b_api_key: str | None = None,
     ) -> int | None:
         # Extracts token usage by running the /context command and parsing the response.
         # The Claude CLI outputs context info in a specific format:
@@ -548,12 +619,19 @@ class ClaudeAgentService:
             }
 
             prompt_iterable = self._create_prompt_iterable(prompt_message)
-            async with E2BSandboxTransport(
+
+            if sandbox_provider != SandboxProviderType.DOCKER and not e2b_api_key:
+                return None
+
+            transport = self._create_sandbox_transport(
+                sandbox_provider=sandbox_provider,
                 sandbox_id=sandbox_id,
-                api_key=e2b_api_key,
-                prompt=prompt_iterable,
+                prompt_iterable=prompt_iterable,
                 options=options,
-            ) as transport:
+                e2b_api_key=e2b_api_key,
+            )
+
+            async with transport:
                 self._active_transport = transport
 
                 response_content = ""
@@ -592,5 +670,5 @@ class ClaudeAgentService:
             return None
 
         except Exception as e:
-            logger.error("Failed to get context token usage silently: %s", e)
+            logger.error("Failed to get context token usage: %s", e)
             return None

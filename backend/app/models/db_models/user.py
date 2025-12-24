@@ -90,4 +90,7 @@ class UserSettings(Base):
     notification_sound_enabled: Mapped[bool] = mapped_column(
         Boolean, default=True, server_default="true", nullable=False
     )
+    sandbox_provider: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="docker", server_default="docker"
+    )
     user = relationship("User", back_populates="settings")
