@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   postgres:
-    image: postgres:13
+    image: postgres:13-alpine
     container_name: claudex-postgres
     restart: always
     command: -c max_connections=600
