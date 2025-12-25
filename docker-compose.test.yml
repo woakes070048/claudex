@@ -3,7 +3,7 @@ version: '3.8'
 services:
   # Test PostgreSQL database
   postgres-test:
-    image: postgres:13
+    image: postgres:13-alpine
     container_name: claudex-postgres-test
     environment:
       POSTGRES_USER: postgres
