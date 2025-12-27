@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Settings as SettingsIcon, AlertCircle, FileText, FileArchive } from 'lucide-react';
+import { cn } from '@/utils/cn';
 import { useNavigate } from 'react-router-dom';
 import type { UserSettings, UserSettingsUpdate, SandboxProvider } from '@/types';
 import {
@@ -451,9 +452,9 @@ const SettingsPage: React.FC = () => {
   }
 
   return (
-    <div className="flex min-h-full bg-surface dark:bg-surface-dark">
-      <div className="flex flex-1 justify-center px-4 py-6">
-        <div className="w-full max-w-3xl">
+    <div className="flex min-h-full overflow-x-hidden bg-surface dark:bg-surface-dark">
+      <div className="flex min-w-0 flex-1 justify-center px-4 py-6">
+        <div className="w-full min-w-0 max-w-3xl">
           <div className="mb-6">
             <h1 className="flex items-center gap-2 text-xl font-semibold text-text-primary dark:text-text-dark-primary">
               <SettingsIcon className="h-4 w-4" />
@@ -463,7 +464,7 @@ const SettingsPage: React.FC = () => {
 
           <div className="mb-6">
             <nav
-              className="flex space-x-4 border-b border-border dark:border-border-dark"
+              className="scrollbar-none -mx-4 flex overflow-x-auto border-b border-border px-4 dark:border-border-dark sm:mx-0 sm:px-0"
               role="tablist"
               aria-label="Settings sections"
             >
@@ -472,7 +473,10 @@ const SettingsPage: React.FC = () => {
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
                   variant="unstyled"
-                  className={tabButtonClasses(activeTab === tab.id)}
+                  className={cn(
+                    tabButtonClasses(activeTab === tab.id),
+                    'mr-4 shrink-0 whitespace-nowrap last:mr-0 sm:mr-6',
+                  )}
                   role="tab"
                   aria-selected={activeTab === tab.id}
                   aria-controls={`${tab.id}-panel`}
@@ -485,9 +489,9 @@ const SettingsPage: React.FC = () => {
           </div>
 
           {hasUnsavedChanges && (
-            <div className="animate-in fade-in slide-in-from-top-2 mb-4 flex items-center justify-between rounded-lg border border-l-4 border-border border-l-brand-500 bg-surface-secondary p-4 shadow-sm duration-300 dark:border-border-dark dark:border-l-brand-600 dark:bg-surface-dark-secondary">
+            <div className="animate-in fade-in slide-in-from-top-2 mb-4 flex flex-col gap-3 rounded-lg border border-l-4 border-border border-l-brand-500 bg-surface-secondary p-4 shadow-sm duration-300 dark:border-border-dark dark:border-l-brand-600 dark:bg-surface-dark-secondary sm:flex-row sm:items-center sm:justify-between sm:gap-0">
               <div className="flex items-center gap-3">
-                <AlertCircle className="h-5 w-5 text-brand-600 dark:text-brand-500" />
+                <AlertCircle className="h-5 w-5 shrink-0 text-brand-600 dark:text-brand-500" />
                 <span className="text-sm font-semibold text-text-primary dark:text-text-dark-primary">
                   You have unsaved changes
                 </span>
@@ -498,7 +502,7 @@ const SettingsPage: React.FC = () => {
                   onClick={handleCancel}
                   variant="outline"
                   size="sm"
-                  className="text-text-secondary dark:text-text-dark-secondary"
+                  className="flex-1 text-text-secondary dark:text-text-dark-secondary sm:flex-none"
                 >
                   Cancel
                 </Button>
@@ -507,6 +511,7 @@ const SettingsPage: React.FC = () => {
                   onClick={handleSave}
                   variant="primary"
                   size="sm"
+                  className="flex-1 sm:flex-none"
                   isLoading={manualUpdateMutation.isPending}
                   loadingText="Saving..."
                 >
@@ -523,7 +528,7 @@ const SettingsPage: React.FC = () => {
           )}
 
           <ErrorBoundary>
-            <div className="space-y-6">
+            <div className="min-w-0 space-y-6">
               {activeTab === 'general' && (
                 <div role="tabpanel" id="general-panel" aria-labelledby="general-tab">
                   <GeneralSettingsTab

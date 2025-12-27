@@ -91,8 +91,8 @@ export const GeneralSettingsTab: React.FC<GeneralSettingsTabProps> = ({
         Notifications
       </h2>
       <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <div>
+        <div className="flex items-start justify-between gap-4 sm:items-center">
+          <div className="min-w-0 flex-1">
             <h3 className="text-sm font-medium text-text-primary dark:text-text-dark-primary">
               Sound Notification
             </h3>
@@ -136,8 +136,8 @@ export const GeneralSettingsTab: React.FC<GeneralSettingsTabProps> = ({
       </h2>
       <div className="space-y-4">
         <div>
-          <div className="flex items-center justify-between">
-            <div>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+            <div className="min-w-0 flex-1">
               <h3 className="text-sm font-medium text-text-primary dark:text-text-dark-primary">
                 Delete All Chats
               </h3>
@@ -150,7 +150,7 @@ export const GeneralSettingsTab: React.FC<GeneralSettingsTabProps> = ({
               onClick={onDeleteAllChats}
               variant="outline"
               size="sm"
-              className="border-error-200 text-error-600 hover:bg-error-50 dark:border-error-800 dark:text-error-400 dark:hover:bg-error-400/10"
+              className="w-full border-error-200 text-error-600 hover:bg-error-50 dark:border-error-800 dark:text-error-400 dark:hover:bg-error-400/10 sm:w-auto"
             >
               Delete All
             </Button>
