@@ -75,10 +75,47 @@ def _validate_component_name(name: str) -> str:
 
 
 class MarketplaceService:
-    def __init__(self) -> None:
+    def __init__(self, github_token: str | None = None) -> None:
         self.cache_path = Path(settings.STORAGE_PATH) / "marketplace_cache"
         self.cache_path.mkdir(parents=True, exist_ok=True)
         self._cache_file = self.cache_path / "catalog.json"
+        self._github_token = github_token
+
+    def _get_github_api_headers(self) -> dict[str, str]:
+        headers = {"Accept": "application/vnd.github.v3+json"}
+        if self._github_token:
+            headers["Authorization"] = f"Bearer {self._github_token}"
+        return headers
+
+    def _check_rate_limit_error(self, response: httpx.Response) -> None:
+        if response.status_code == 403:
+            remaining = response.headers.get("X-RateLimit-Remaining", "")
+            if remaining == "0":
+                reset_timestamp = response.headers.get("X-RateLimit-Reset", "")
+                msg = (
+                    "GitHub API rate limit exceeded. "
+                    "Configure your GitHub Personal Access Token in Settings."
+                )
+                if reset_timestamp:
+                    try:
+                        reset_time = datetime.fromtimestamp(
+                            int(reset_timestamp), tz=timezone.utc
+                        )
+                        minutes_until_reset = max(
+                            1,
+                            int(
+                                (reset_time - datetime.now(timezone.utc)).total_seconds()
+                                / 60
+                            ),
+                        )
+                        msg += f" Resets in ~{minutes_until_reset} min."
+                    except (ValueError, TypeError):
+                        pass
+                raise MarketplaceException(
+                    msg,
+                    error_code=ErrorCode.MARKETPLACE_FETCH_FAILED,
+                    status_code=429,
+                )
 
     async def fetch_catalog(
         self, force_refresh: bool = False
@@ -278,9 +315,8 @@ class MarketplaceService:
     async def _list_directory(self, client: httpx.AsyncClient, path: str) -> list[str]:
         url = f"{GITHUB_API_BASE}/{path}"
         try:
-            response = await client.get(
-                url, headers={"Accept": "application/vnd.github.v3+json"}
-            )
+            response = await client.get(url, headers=self._get_github_api_headers())
+            self._check_rate_limit_error(response)
             if response.status_code != 200:
                 return []
             data = response.json()
@@ -377,9 +413,8 @@ class MarketplaceService:
         files: list[str] = []
         url = f"{GITHUB_API_BASE}/{path}"
         try:
-            response = await client.get(
-                url, headers={"Accept": "application/vnd.github.v3+json"}
-            )
+            response = await client.get(url, headers=self._get_github_api_headers())
+            self._check_rate_limit_error(response)
             if response.status_code != 200:
                 return []
             data = response.json()

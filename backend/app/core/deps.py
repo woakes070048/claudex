@@ -64,8 +64,34 @@ def get_marketplace_service() -> MarketplaceService:
     return MarketplaceService()
 
 
+async def get_marketplace_service_with_token(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+    user_service: UserService = Depends(get_user_service),
+) -> MarketplaceService:
+    try:
+        user_settings = await user_service.get_user_settings(current_user.id, db=db)
+        github_token = user_settings.github_personal_access_token
+    except UserException:
+        github_token = None
+    return MarketplaceService(github_token=github_token)
+
+
 def get_plugin_installer_service() -> PluginInstallerService:
     return PluginInstallerService()
+
+
+async def get_plugin_installer_service_with_token(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+    user_service: UserService = Depends(get_user_service),
+) -> PluginInstallerService:
+    try:
+        user_settings = await user_service.get_user_settings(current_user.id, db=db)
+        github_token = user_settings.github_personal_access_token
+    except UserException:
+        github_token = None
+    return PluginInstallerService(github_token=github_token)
 
 
 def get_scheduler_service() -> SchedulerService:

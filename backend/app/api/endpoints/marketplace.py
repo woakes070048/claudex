@@ -9,7 +9,8 @@ from app.core.deps import (
     get_command_service,
     get_db,
     get_marketplace_service,
-    get_plugin_installer_service,
+    get_marketplace_service_with_token,
+    get_plugin_installer_service_with_token,
     get_skill_service,
     get_user_service,
 )
@@ -66,7 +67,8 @@ async def get_catalog(
 @router.get("/catalog/{plugin_name}", response_model=PluginDetails)
 async def get_plugin_details(
     plugin_name: str,
-    marketplace_service: MarketplaceService = Depends(get_marketplace_service),
+    current_user: User = Depends(get_current_user),
+    marketplace_service: MarketplaceService = Depends(get_marketplace_service_with_token),
 ) -> PluginDetails:
     try:
         details = await marketplace_service.get_plugin_details(plugin_name)
@@ -80,8 +82,10 @@ async def install_plugin_components(
     request: InstallComponentRequest,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-    marketplace_service: MarketplaceService = Depends(get_marketplace_service),
-    installer_service: PluginInstallerService = Depends(get_plugin_installer_service),
+    marketplace_service: MarketplaceService = Depends(get_marketplace_service_with_token),
+    installer_service: PluginInstallerService = Depends(
+        get_plugin_installer_service_with_token
+    ),
     user_service: UserService = Depends(get_user_service),
 ) -> InstallResponse:
     # 3-phase install to minimize DB lock time:
@@ -237,6 +241,10 @@ async def uninstall_plugin_components(
     failed: list[InstallComponentResult] = []
     user_id = str(current_user.id)
 
+    installed_plugins: list[InstalledPluginDict] = list(
+        user_settings.installed_plugins or []
+    )
+
     for component_id in request.components:
         if ":" not in component_id:
             failed.append(
@@ -344,15 +352,11 @@ async def uninstall_plugin_components(
             )
 
     if uninstalled:
-        # Update installed_plugins to remove uninstalled components
-        installed_plugins: list[InstalledPluginDict] = list(
-            user_settings.installed_plugins or []
-        )
         plugin_idx = next(
             (
                 i
                 for i, p in enumerate(installed_plugins)
-                if p["name"] == request.plugin_name
+                if p.get("name") == request.plugin_name
             ),
             None,
         )

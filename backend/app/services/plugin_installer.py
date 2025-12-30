@@ -22,8 +22,8 @@ from app.services.skill import SkillService
 
 logger = logging.getLogger(__name__)
 
-McpCommandType = Literal["npx", "bunx", "uvx"]
-SUPPORTED_MCP_COMMANDS: set[McpCommandType] = {"npx", "bunx", "uvx"}
+McpCommandType = Literal["npx", "bunx", "uvx", "http"]
+SUPPORTED_MCP_COMMANDS: set[str] = {"npx", "bunx", "uvx"}
 
 
 @dataclass
@@ -37,8 +37,8 @@ class InstallResult:
 
 
 class PluginInstallerService:
-    def __init__(self) -> None:
-        self.marketplace = MarketplaceService()
+    def __init__(self, github_token: str | None = None) -> None:
+        self.marketplace = MarketplaceService(github_token=github_token)
         self.skill_service = SkillService()
         self.agent_service = AgentService()
         self.command_service = CommandService()
@@ -95,23 +95,27 @@ class PluginInstallerService:
                     agent = await self._install_agent(
                         user_id, source, comp_name, current_agents
                     )
+                    agent["name"] = comp_name
                     new_agents.append(agent)
                     installed.append(component)
                 elif comp_type == "command":
                     cmd = await self._install_command(
                         user_id, source, comp_name, current_commands
                     )
+                    cmd["name"] = comp_name
                     new_commands.append(cmd)
                     installed.append(component)
                 elif comp_type == "skill":
                     skill = await self._install_skill(
                         user_id, source, comp_name, current_skills
                     )
+                    skill["name"] = comp_name
                     new_skills.append(skill)
                     installed.append(component)
                 elif comp_type == "mcp":
                     mcp = await self._install_mcp(source, comp_name, current_mcps)
                     if mcp:
+                        mcp["name"] = comp_name
                         new_mcps.append(mcp)
                         installed.append(component)
                     else:
@@ -225,6 +229,11 @@ class PluginInstallerService:
     def _convert_mcp_config(
         self, name: str, config: dict[str, Any]
     ) -> CustomMcpDict | None:
+        mcp_type = config.get("type", "")
+
+        if mcp_type == "http":
+            return self._convert_http_mcp_config(name, config)
+
         command = config.get("command", "")
         args = config.get("args", [])
 
@@ -236,7 +245,6 @@ class PluginInstallerService:
         package: str | None = None
         filtered_args: list[str] = []
 
-        # parse npx/bunx/uvx args: extract package name from "-y <pkg>" or first non-flag arg
         skip_next = False
         for i, arg in enumerate(args):
             if skip_next:
@@ -259,6 +267,34 @@ class PluginInstallerService:
             "url": None,
             "env_vars": config.get("env"),
             "args": filtered_args if filtered_args else None,
+            "enabled": True,
+        }
+
+    def _convert_http_mcp_config(
+        self, name: str, config: dict[str, Any]
+    ) -> CustomMcpDict | None:
+        url = config.get("url")
+        if not url:
+            logger.warning(f"HTTP MCP server '{name}' missing url")
+            return None
+
+        env_vars: dict[str, str] = {}
+        headers = config.get("headers", {})
+        for _, header_value in headers.items():
+            if "${" in header_value and "}" in header_value:
+                start = header_value.index("${") + 2
+                end = header_value.index("}")
+                env_var_name = header_value[start:end]
+                env_vars[env_var_name] = ""
+
+        return {
+            "name": name,
+            "description": f"MCP server from marketplace: {name}",
+            "command_type": "http",
+            "package": None,
+            "url": url,
+            "env_vars": env_vars if env_vars else None,
+            "args": None,
             "enabled": True,
         }
 

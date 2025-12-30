@@ -25,10 +25,7 @@ export class ServiceError extends Error {
     if (!error.status) return false;
 
     return (
-      error.status === 429 ||
-      error.status === 503 ||
-      error.status === 504 ||
-      (error.status >= 500 && error.status < 600)
+      error.status === 503 || error.status === 504 || (error.status >= 500 && error.status < 600)
     );
   }
 }
