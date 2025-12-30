@@ -21,12 +21,6 @@ const BashToolInner: React.FC<{ tool: ToolAggregate }> = ({ tool }) => {
   const command = input?.command ?? '';
   const description = input?.description;
 
-  const truncatedCommand = command
-    ? command.length > 50
-      ? `${command.slice(0, 47)}...`
-      : command
-    : '';
-
   const output = formatOutput(tool.result);
   const hasExpandableContent =
     command.length > 50 || (output.length > 0 && tool.status === 'completed');
@@ -42,11 +36,11 @@ const BashToolInner: React.FC<{ tool: ToolAggregate }> = ({ tool }) => {
         if (!command) return status === 'completed' ? 'Ran command' : 'Run command';
         switch (status) {
           case 'completed':
-            return `Ran: ${truncatedCommand}`;
+            return `Ran: ${command}`;
           case 'failed':
-            return `Failed: ${truncatedCommand}`;
+            return `Failed: ${command}`;
           default:
-            return `Running: ${truncatedCommand}`;
+            return `Running: ${command}`;
         }
       }}
       loadingContent="Running command..."
