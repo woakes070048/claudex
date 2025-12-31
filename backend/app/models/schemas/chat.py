@@ -6,7 +6,7 @@ from fastapi import UploadFile
 from pydantic import BaseModel, Field
 
 from app.models.db_models import AttachmentType, MessageRole
-from app.models.schemas.pagination import PaginatedResponse
+from app.models.schemas.pagination import CursorPaginatedResponse, PaginatedResponse
 
 
 class MessageAttachmentBase(BaseModel):
@@ -109,6 +109,10 @@ class PaginatedChats(PaginatedResponse[Chat]):
 
 
 class PaginatedMessages(PaginatedResponse[Message]):
+    pass
+
+
+class CursorPaginatedMessages(CursorPaginatedResponse[Message]):
     pass
 
 

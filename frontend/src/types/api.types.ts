@@ -5,6 +5,11 @@ export interface PaginationParams {
   per_page: number;
 }
 
+export interface CursorPaginationParams {
+  cursor?: string;
+  limit?: number;
+}
+
 export interface PaginatedResponse<T> {
   items: T[];
   page: number;
@@ -13,5 +18,11 @@ export interface PaginatedResponse<T> {
   pages: number;
 }
 
+export interface CursorPaginatedResponse<T> {
+  items: T[];
+  next_cursor: string | null;
+  has_more: boolean;
+}
+
 export type PaginatedChats = PaginatedResponse<Chat>;
-export type PaginatedMessages = PaginatedResponse<Message>;
+export type PaginatedMessages = CursorPaginatedResponse<Message>;

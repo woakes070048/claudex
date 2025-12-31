@@ -8,6 +8,7 @@ import {
   Chat,
   CreateChatRequest,
   PaginationParams,
+  CursorPaginationParams,
   PaginatedChats,
   PaginatedMessages,
   ContextUsage,
@@ -93,22 +94,24 @@ async function stopStream(chatId: string): Promise<void> {
 
 async function getMessages(
   chatId: string,
-  pagination?: PaginationParams,
+  pagination?: CursorPaginationParams,
 ): Promise<PaginatedMessages> {
   validateId(chatId, 'Chat ID');
 
   return serviceCall(async () => {
-    const queryString = buildQueryString(pagination as unknown as Record<string, number>);
+    const params: Record<string, string | number> = {};
+    if (pagination?.cursor) params.cursor = pagination.cursor;
+    if (pagination?.limit) params.limit = pagination.limit;
+
+    const queryString = buildQueryString(params);
     const endpoint = `/chat/chats/${chatId}/messages${queryString}`;
 
     const response = await apiClient.get<PaginatedMessages>(endpoint);
     return (
       response ?? {
         items: [],
-        page: 1,
-        per_page: 10,
-        total: 0,
-        pages: 0,
+        next_cursor: null,
+        has_more: false,
       }
     );
   });

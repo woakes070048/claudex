@@ -22,18 +22,17 @@ export const useInfiniteChatsQuery = (options?: { perPage?: number; enabled?: bo
   });
 };
 
-export const useInfiniteMessagesQuery = (chatId: string, perPage: number = 10) => {
+export const useInfiniteMessagesQuery = (chatId: string, limit: number = 20) => {
   return useInfiniteQuery({
     queryKey: queryKeys.messages(chatId),
     queryFn: async ({ pageParam }) => {
-      const page = pageParam as number;
-      return chatService.getMessages(chatId, { page, per_page: perPage });
+      return chatService.getMessages(chatId, {
+        cursor: pageParam as string | undefined,
+        limit,
+      });
     },
-    getNextPageParam: (lastPage) => {
-      const nextPage = lastPage.page + 1;
-      return nextPage <= lastPage.pages ? nextPage : undefined;
-    },
-    initialPageParam: 1,
+    getNextPageParam: (lastPage) => lastPage.next_cursor ?? undefined,
+    initialPageParam: undefined as string | undefined,
     enabled: !!chatId,
   });
 };

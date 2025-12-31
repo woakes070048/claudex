@@ -32,9 +32,10 @@ from app.models.schemas import (
     ChatUpdate,
     ChatRequest,
     ContextUsage,
+    CursorPaginatedMessages,
+    CursorPaginationParams,
     EnhancePromptResponse,
     PaginatedChats,
-    PaginatedMessages,
     PaginationParams,
     PermissionRespondResponse,
     RestoreRequest,
@@ -416,14 +417,16 @@ async def delete_chat(
     await chat_service.delete_chat(chat_id, current_user)
 
 
-@router.get("/chats/{chat_id}/messages", response_model=PaginatedMessages)
+@router.get("/chats/{chat_id}/messages", response_model=CursorPaginatedMessages)
 async def get_chat_messages(
     chat_id: UUID,
-    pagination: PaginationParams = Depends(),
+    pagination: CursorPaginationParams = Depends(),
     current_user: User = Depends(get_current_user),
     chat_service: ChatService = Depends(get_chat_service),
-) -> PaginatedMessages:
-    return await chat_service.get_chat_messages(chat_id, current_user, pagination)
+) -> CursorPaginatedMessages:
+    return await chat_service.get_chat_messages(
+        chat_id, current_user, pagination.cursor, pagination.limit
+    )
 
 
 @router.post("/chats/{chat_id}/restore", status_code=status.HTTP_204_NO_CONTENT)

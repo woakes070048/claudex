@@ -24,8 +24,8 @@ from app.models.schemas import (
     ChatCreate,
     ChatRequest,
     ChatUpdate,
+    CursorPaginatedMessages,
     PaginatedChats,
-    PaginatedMessages,
     PaginationParams,
 )
 from app.models.types import ChatCompletionResult, MessageAttachmentDict
@@ -346,8 +346,8 @@ class ChatService(BaseDbService[Chat]):
             return len(sandbox_ids)
 
     async def get_chat_messages(
-        self, chat_id: UUID, user: User, pagination: PaginationParams | None = None
-    ) -> PaginatedMessages:
+        self, chat_id: UUID, user: User, cursor: str | None = None, limit: int = 20
+    ) -> CursorPaginatedMessages:
         has_access = await self._verify_chat_access(chat_id, user.id)
         if not has_access:
             raise ChatException(
@@ -359,7 +359,7 @@ class ChatService(BaseDbService[Chat]):
 
         asyncio.create_task(self._resume_sandbox(chat_id, user))
 
-        return await self.message_service.get_chat_messages(chat_id, pagination)
+        return await self.message_service.get_chat_messages(chat_id, cursor, limit)
 
     async def initiate_chat_completion(
         self,

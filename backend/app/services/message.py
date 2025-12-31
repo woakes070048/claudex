@@ -1,10 +1,9 @@
 import logging
-import math
 from datetime import datetime, timezone
 from typing import cast
 from uuid import UUID
 
-from sqlalchemy import select, func, delete, update
+from sqlalchemy import select, func, delete, update, or_, and_
 from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -15,10 +14,11 @@ from app.models.db_models import (
     MessageRole,
     MessageStreamStatus,
 )
-from app.models.schemas import PaginationParams, PaginatedMessages
+from app.models.schemas import CursorPaginatedMessages
 from app.models.types import MessageAttachmentDict
 from app.services.base import BaseDbService, SessionFactoryType
 from app.services.exceptions import MessageException, ErrorCode
+from app.utils.cursor import encode_cursor, decode_cursor
 
 settings = get_settings()
 logger = logging.getLogger(__name__)
@@ -136,37 +136,41 @@ class MessageService(BaseDbService[Message]):
             return cast(Message, message)
 
     async def get_chat_messages(
-        self, chat_id: UUID, pagination: PaginationParams | None = None
-    ) -> PaginatedMessages:
-        if pagination is None:
-            pagination = PaginationParams()
-
+        self, chat_id: UUID, cursor: str | None = None, limit: int = 20
+    ) -> CursorPaginatedMessages:
         async with self.session_factory() as db:
-            count_query = select(func.count(Message.id)).filter(
-                Message.chat_id == chat_id, Message.deleted_at.is_(None)
-            )
-            count_result = await db.execute(count_query)
-            total = count_result.scalar() or 0
-
-            offset = (pagination.page - 1) * pagination.per_page
-
             query = (
                 select(Message)
                 .options(selectinload(Message.attachments))
                 .filter(Message.chat_id == chat_id, Message.deleted_at.is_(None))
-                .order_by(Message.created_at)
-                .offset(offset)
-                .limit(pagination.per_page)
+                .order_by(Message.created_at.desc(), Message.id.desc())
+                .limit(limit + 1)
             )
-            result = await db.execute(query)
-            messages = list(result.scalars().all())
 
-            return PaginatedMessages(
-                items=messages,
-                page=pagination.page,
-                per_page=pagination.per_page,
-                total=total,
-                pages=math.ceil(total / pagination.per_page) if total > 0 else 0,
+            if cursor:
+                ts, mid = decode_cursor(cursor)
+                query = query.filter(
+                    or_(
+                        Message.created_at < ts,
+                        and_(Message.created_at == ts, Message.id < mid),
+                    )
+                )
+
+            result = await db.execute(query)
+            rows = list(result.scalars().all())
+
+            has_more = len(rows) > limit
+            items = rows[:limit]
+
+            next_cursor = None
+            if has_more and items:
+                last = items[-1]
+                next_cursor = encode_cursor(last.created_at, last.id)
+
+            return CursorPaginatedMessages(
+                items=items,
+                next_cursor=next_cursor,
+                has_more=has_more,
             )
 
     async def get_latest_assistant_message(self, chat_id: UUID) -> Message | None:

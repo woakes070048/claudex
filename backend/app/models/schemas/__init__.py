@@ -28,6 +28,7 @@ from .chat import (
     ChatStatusResponse,
     ChatUpdate,
     ContextUsage,
+    CursorPaginatedMessages,
     EnhancePromptResponse,
     ExecuteCommandResponse,
     Message,
@@ -41,7 +42,12 @@ from .chat import (
     PreviewLinksResponse,
     RestoreRequest,
 )
-from .pagination import PaginatedResponse, PaginationParams
+from .pagination import (
+    CursorPaginatedResponse,
+    CursorPaginationParams,
+    PaginatedResponse,
+    PaginationParams,
+)
 from .permissions import PermissionRequest, PermissionRequestResponse, PermissionResult
 from .sandbox import (
     AddSecretRequest,
@@ -120,6 +126,7 @@ __all__ = [
     "MessageAttachment",
     "MessageAttachmentBase",
     "MessageBase",
+    "CursorPaginatedMessages",
     "PaginatedChats",
     "PaginatedMessages",
     "PermissionRespondResponse",
@@ -127,6 +134,8 @@ __all__ = [
     "PreviewLinksResponse",
     "RestoreRequest",
     # pagination
+    "CursorPaginatedResponse",
+    "CursorPaginationParams",
     "PaginatedResponse",
     "PaginationParams",
     # permissions
