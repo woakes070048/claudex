@@ -52,7 +52,7 @@ export const MobilePreview = ({ sandboxId }: MobilePreviewProps) => {
 
   if (!sandboxId) {
     return (
-      <div className="flex h-full items-center justify-center bg-surface text-text-tertiary dark:bg-surface-dark dark:text-text-dark-tertiary">
+      <div className="flex h-full items-center justify-center bg-surface-secondary text-text-tertiary dark:bg-surface-dark-secondary dark:text-text-dark-tertiary">
         <div className="text-center">
           <Smartphone className="mx-auto mb-3 h-12 w-12 opacity-40" />
           <p className="text-sm">No sandbox connected</p>
@@ -66,7 +66,7 @@ export const MobilePreview = ({ sandboxId }: MobilePreviewProps) => {
   }
 
   return (
-    <div className="flex h-full bg-surface dark:bg-surface-dark">
+    <div className="flex h-full bg-surface-secondary dark:bg-surface-dark-secondary">
       <div className="relative flex flex-1 items-center justify-center p-8">
         {ports.length > 0 && (
           <div className="absolute right-4 top-4 flex items-center gap-1.5 rounded-lg bg-surface-secondary px-2 py-1.5 dark:bg-surface-dark-secondary">

@@ -241,7 +241,7 @@ export const Chat = memo(function Chat({
 
           {showScrollButton && <ScrollButton onClick={scrollToBottom} />}
 
-          <div className="relative border-t border-border bg-surface pb-safe dark:border-border-dark dark:bg-surface-dark">
+          <div className="relative border-t border-border bg-surface-secondary pb-safe dark:border-border-dark dark:bg-surface-dark-secondary">
             <div className="w-full py-2 lg:mx-auto lg:max-w-3xl">
               <Input
                 message={inputMessage}

@@ -67,7 +67,7 @@ export const EnvVarsSettingsTab: React.FC<EnvVarsSettingsTabProps> = ({
               {envVar.key}
             </h3>
           </div>
-          <div className="rounded bg-surface-secondary p-2 dark:bg-surface-dark-secondary">
+          <div className="rounded bg-surface-tertiary p-2 dark:bg-surface-dark-tertiary">
             <div className="flex items-center justify-between gap-2">
               <p className="break-all font-mono text-xs text-text-secondary dark:text-text-dark-secondary">
                 {revealedValues[envVar.key] ? envVar.value : maskValue(envVar.value)}

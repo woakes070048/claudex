@@ -190,7 +190,7 @@ export const View = memo(function View({
 
       <div className="relative flex-1 overflow-hidden">
         {isLoadingContent && (
-          <div className="absolute inset-0 z-10 flex items-center justify-center bg-surface bg-opacity-75 dark:bg-surface-dark">
+          <div className="absolute inset-0 z-10 flex items-center justify-center bg-surface-secondary bg-opacity-75 dark:bg-surface-dark-secondary">
             <div className="text-sm text-text-secondary dark:text-text-dark-secondary">
               Loading file content...
             </div>

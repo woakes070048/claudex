@@ -102,7 +102,7 @@ export const Editor = memo(function Editor({
 
   return (
     <div
-      className={`flex h-full w-full flex-col overflow-hidden ${theme === 'light' ? 'bg-surface' : 'bg-surface-dark'}`}
+      className={`flex h-full w-full flex-col overflow-hidden ${theme === 'light' ? 'bg-surface-secondary' : 'bg-surface-dark-secondary'}`}
     >
       <CodeView
         files={files}

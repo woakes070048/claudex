@@ -179,14 +179,14 @@ export const PluginDetailModal: React.FC<PluginDetailModalProps> = ({
   return (
     <BaseModal isOpen={isOpen} onClose={onClose} size="xl">
       <div className="flex max-h-[80vh] flex-col">
-        <div className="border-border-primary bg-surface-primary dark:border-border-dark-primary dark:bg-surface-dark-primary flex items-center justify-between border-b p-4">
+        <div className="flex items-center justify-between border-b border-border bg-surface-tertiary p-4 dark:border-border-dark dark:bg-surface-dark-tertiary">
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
               <h2 className="truncate text-lg font-semibold text-text-primary dark:text-text-dark-primary">
                 {plugin.name}
               </h2>
               {plugin.version && (
-                <span className="rounded bg-surface-secondary px-2 py-0.5 text-xs dark:bg-surface-dark-secondary">
+                <span className="rounded bg-surface-tertiary px-2 py-0.5 text-xs dark:bg-surface-dark-tertiary">
                   v{plugin.version}
                 </span>
               )}
@@ -224,7 +224,7 @@ export const PluginDetailModal: React.FC<PluginDetailModalProps> = ({
 
           {isLoading ? (
             <div className="flex items-center justify-center py-8">
-              <Spinner size="lg" />
+              <Spinner size="lg" className="text-brand-500" />
             </div>
           ) : isError ? (
             <div className="rounded-lg border border-error-200 bg-error-50 p-6 text-center dark:border-error-800 dark:bg-error-900/20">
@@ -280,7 +280,7 @@ export const PluginDetailModal: React.FC<PluginDetailModalProps> = ({
                             ? 'border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-900/20'
                             : isSelected
                               ? 'border-brand-500 bg-brand-50 dark:border-brand-400 dark:bg-brand-900/20'
-                              : 'border-border-primary dark:border-border-dark-primary hover:border-brand-300 dark:hover:border-brand-600'
+                              : 'border-border hover:border-brand-300 dark:border-border-dark dark:hover:border-brand-600'
                       }`}
                     >
                       <div className="flex items-center gap-3">
@@ -327,7 +327,7 @@ export const PluginDetailModal: React.FC<PluginDetailModalProps> = ({
                   <h3 className="mb-2 text-sm font-medium text-text-primary dark:text-text-dark-primary">
                     Documentation
                   </h3>
-                  <div className="max-h-64 overflow-y-auto rounded-lg bg-surface-secondary p-3 dark:bg-surface-dark-secondary">
+                  <div className="max-h-64 overflow-y-auto rounded-lg bg-surface-tertiary p-3 dark:bg-surface-dark-tertiary">
                     <MarkDown content={details.readme} />
                   </div>
                 </div>
@@ -340,7 +340,7 @@ export const PluginDetailModal: React.FC<PluginDetailModalProps> = ({
           )}
         </div>
 
-        <div className="border-border-primary bg-surface-primary dark:border-border-dark-primary dark:bg-surface-dark-primary flex justify-end gap-2 border-t p-4">
+        <div className="flex justify-end gap-2 border-t border-border bg-surface-tertiary p-4 dark:border-border-dark dark:bg-surface-dark-tertiary">
           <Button variant="outline" size="sm" onClick={onClose}>
             Cancel
           </Button>

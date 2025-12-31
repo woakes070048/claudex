@@ -4,7 +4,7 @@ import { Smartphone, Monitor, ExternalLink, RotateCcw } from 'lucide-react';
 import type { PortInfo } from '@/types';
 import { Button, Select, Spinner } from '@/components/ui';
 
-const backgroundClass = 'bg-white dark:bg-surface-dark';
+const backgroundClass = 'bg-surface-secondary dark:bg-surface-dark-secondary';
 const buttonHoverClass =
   'text-text-tertiary hover:text-text-secondary dark:hover:text-text-dark-secondary';
 

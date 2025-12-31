@@ -9,7 +9,9 @@ export interface EmptyStateProps {
 
 export const EmptyState = memo(function EmptyState({ theme, onToggleFileTree }: EmptyStateProps) {
   return (
-    <div className={`flex h-full flex-col ${theme === 'light' ? 'bg-surface' : 'bg-surface-dark'}`}>
+    <div
+      className={`flex h-full flex-col ${theme === 'light' ? 'bg-surface-secondary' : 'bg-surface-dark-secondary'}`}
+    >
       {onToggleFileTree && (
         <div className="flex items-center border-b border-border px-3 py-1.5 dark:border-border-dark">
           <button

@@ -60,9 +60,9 @@ export const Container: FC<ContainerProps> = ({ sandboxId, isVisible }) => {
   }, []);
 
   return (
-    <div className="flex h-full flex-col bg-surface dark:bg-surface-dark">
+    <div className="flex h-full flex-col bg-surface-secondary dark:bg-surface-dark-secondary">
       {/* Tab bar */}
-      <div className="flex items-center overflow-x-auto border-b border-border bg-surface dark:border-border-dark dark:bg-surface-dark">
+      <div className="flex items-center overflow-x-auto border-b border-border bg-surface-secondary dark:border-border-dark dark:bg-surface-dark-secondary">
         {terminals.map((terminal) => (
           <div
             key={terminal.id}

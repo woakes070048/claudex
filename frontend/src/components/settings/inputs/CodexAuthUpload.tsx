@@ -99,7 +99,7 @@ export const CodexAuthUpload: React.FC<CodexAuthUploadProps> = ({ value, onChang
   return (
     <div className="mt-2 space-y-2">
       {value ? (
-        <div className="flex items-center justify-between rounded-lg border border-border bg-surface-secondary p-3 dark:border-border-dark dark:bg-surface-dark-secondary">
+        <div className="flex items-center justify-between rounded-lg border border-border bg-surface-tertiary p-3 dark:border-border-dark dark:bg-surface-dark-tertiary">
           <div className="flex items-center gap-2">
             <Check className="h-4 w-4 text-success-600" />
             <span className="text-sm text-text-primary dark:text-text-dark-primary">

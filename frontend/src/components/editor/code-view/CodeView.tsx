@@ -37,7 +37,7 @@ export const CodeView = memo(function CodeView({
   onRefresh,
   isRefreshing = false,
 }: CodeViewProps) {
-  const backgroundClass = theme === 'light' ? 'bg-surface' : 'bg-surface-dark';
+  const backgroundClass = theme === 'light' ? 'bg-surface-secondary' : 'bg-surface-dark-secondary';
   const isMobile = useIsMobile();
   const [showMobileTree, setShowMobileTree] = useState(false);
 

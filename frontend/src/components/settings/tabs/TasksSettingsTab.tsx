@@ -246,7 +246,7 @@ export const TasksSettingsTab: React.FC<TasksSettingsTabProps> = ({ onAddTask, o
               {tasksList.map((task) => (
                 <div
                   key={task.id}
-                  className="rounded-lg border border-border bg-surface p-4 transition-colors hover:border-border-hover dark:border-border-dark dark:bg-surface-dark dark:hover:border-border-dark-hover"
+                  className="rounded-lg border border-border bg-surface-tertiary p-4 transition-colors hover:border-border-hover dark:border-border-dark dark:bg-surface-dark-tertiary dark:hover:border-border-dark-hover"
                 >
                   <div className="flex items-start justify-between gap-4">
                     <div className="min-w-0 flex-1">

@@ -156,7 +156,7 @@ export const McpDialog: React.FC<McpDialogProps> = ({
               onChange={(e) =>
                 onMcpChange('command_type', e.target.value as 'npx' | 'bunx' | 'uvx' | 'http')
               }
-              className="w-full rounded-md border border-border bg-surface px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-brand-500 dark:border-border-dark dark:bg-surface-dark dark:text-text-dark-primary"
+              className="w-full rounded-md border border-border bg-surface-tertiary px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-brand-500 dark:border-border-dark dark:bg-surface-dark-tertiary dark:text-text-dark-primary"
             >
               <option value="npx">NPX Package</option>
               <option value="bunx">Bunx Package</option>

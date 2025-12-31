@@ -22,7 +22,7 @@ const renderHelperText = (helperText?: HelperTextLink | HelperTextCode) => {
     return (
       <p className="mt-1.5 break-words text-2xs text-text-quaternary dark:text-text-dark-quaternary">
         {helperText.prefix}{' '}
-        <code className="break-all rounded bg-surface-secondary px-1 py-0.5 text-text-primary dark:bg-surface-dark-secondary dark:text-text-dark-primary">
+        <code className="break-all rounded bg-surface-tertiary px-1 py-0.5 text-text-primary dark:bg-surface-dark-tertiary dark:text-text-dark-primary">
           {helperText.code}
         </code>{' '}
         {helperText.suffix}

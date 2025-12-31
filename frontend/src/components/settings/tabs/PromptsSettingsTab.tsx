@@ -40,7 +40,7 @@ export const PromptsSettingsTab: React.FC<PromptsSettingsTabProps> = ({
               {prompt.name}
             </h3>
           </div>
-          <div className="mt-2 rounded bg-surface-secondary p-2 dark:bg-surface-dark-secondary">
+          <div className="mt-2 rounded bg-surface-tertiary p-2 dark:bg-surface-dark-tertiary">
             <p className="line-clamp-3 font-mono text-xs text-text-secondary dark:text-text-dark-secondary">
               {prompt.content}
             </p>

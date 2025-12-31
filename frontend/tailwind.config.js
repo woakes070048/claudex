@@ -81,15 +81,15 @@ export default {
 
         // Surface colors
         surface: {
-          DEFAULT: '#ffffff',
+          DEFAULT: '#f5f5f5',
           secondary: '#f9f9f9',
           tertiary: '#f3f3f3',
-          hover: '#f5f5f5',
+          hover: '#ebebeb',
           dark: {
             DEFAULT: '#0a0a0a',
             secondary: '#141414',
             tertiary: '#1e1e1e',
-            hover: '#1a1a1a',
+            hover: '#282828',
           },
         },
 

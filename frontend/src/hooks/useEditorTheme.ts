@@ -2,11 +2,42 @@ import { useCallback } from 'react';
 import { useUIStore } from '@/store';
 import type * as monaco from 'monaco-editor';
 
+const LIGHT_THEME: monaco.editor.IStandaloneThemeData = {
+  base: 'vs',
+  inherit: true,
+  rules: [
+    { token: '', foreground: '333333', background: '#f9f9f9' },
+    { token: 'comment', foreground: '6A737D', fontStyle: 'italic' },
+    { token: 'keyword', foreground: 'D73A49' },
+    { token: 'string', foreground: '032F62' },
+    { token: 'number', foreground: '005CC5' },
+    { token: 'type', foreground: '6F42C1' },
+    { token: 'variable', foreground: '24292E' },
+    { token: 'function', foreground: '6F42C1' },
+  ],
+  colors: {
+    'editor.background': '#f9f9f9',
+    'editor.foreground': '#333333',
+    'editorLineNumber.foreground': '#6E7781',
+    'editorLineNumber.activeForeground': '#24292E',
+    'editor.selectionBackground': '#ADD6FF',
+    'editor.inactiveSelectionBackground': '#E5EBF1',
+    'editorCursor.foreground': '#24292E',
+    'editor.findMatchBackground': '#FFDF5D',
+    'editor.findMatchHighlightBackground': '#FFDF5D80',
+    'editorSuggestWidget.background': '#FFFFFF',
+    'editorSuggestWidget.foreground': '#333333',
+    'editorSuggestWidget.selectedBackground': '#E8E8E8',
+    'editorWidget.background': '#FFFFFF',
+    'editorWidget.border': '#E1E4E8',
+  },
+};
+
 const DARK_THEME: monaco.editor.IStandaloneThemeData = {
   base: 'vs-dark',
   inherit: true,
   rules: [
-    { token: '', foreground: 'BDBDBD', background: '#09090b' },
+    { token: '', foreground: 'BDBDBD', background: '#141414' },
     { token: 'comment', foreground: '7E7E7E', fontStyle: 'italic' },
     { token: 'keyword', foreground: '7895C6' },
     { token: 'string', foreground: 'C49B66' },
@@ -16,7 +47,7 @@ const DARK_THEME: monaco.editor.IStandaloneThemeData = {
     { token: 'function', foreground: 'C0B18C' },
   ],
   colors: {
-    'editor.background': '#09090b',
+    'editor.background': '#141414',
     'editor.foreground': '#BDBDBD',
     'editorLineNumber.foreground': '#959595',
     'editorLineNumber.activeForeground': '#B0B0B0',
@@ -40,6 +71,7 @@ export function useEditorTheme() {
     (monaco: typeof import('monaco-editor')) => {
       if (!monaco || !monaco.editor) return;
 
+      monaco.editor.defineTheme('custom-light', LIGHT_THEME);
       monaco.editor.defineTheme('custom-dark', DARK_THEME);
 
       monaco.languages.typescript.typescriptDefaults.setCompilerOptions({
@@ -64,15 +96,13 @@ export function useEditorTheme() {
         allowSyntheticDefaultImports: true,
       });
 
-      if (theme === 'dark') {
-        monaco.editor.setTheme('custom-dark');
-      }
+      monaco.editor.setTheme(theme === 'dark' ? 'custom-dark' : 'custom-light');
     },
     [theme],
   );
 
   return {
-    currentTheme: theme === 'light' ? 'light' : 'custom-dark',
+    currentTheme: theme === 'light' ? 'custom-light' : 'custom-dark',
     setupEditorTheme,
   };
 }

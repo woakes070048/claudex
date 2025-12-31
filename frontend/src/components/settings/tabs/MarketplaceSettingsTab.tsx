@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
 import { Input } from '@/components/ui/primitives/Input';
+import { Select } from '@/components/ui/primitives/Select';
 import { Spinner } from '@/components/ui/primitives/Spinner';
 import { Store, Search, RefreshCw, AlertCircle } from 'lucide-react';
 import {
@@ -60,7 +61,7 @@ export const MarketplaceSettingsTab: React.FC = () => {
           <button
             onClick={() => refreshMutation.mutate()}
             disabled={refreshMutation.isPending}
-            className="flex items-center gap-1.5 rounded px-2 py-1 text-xs text-text-secondary hover:bg-surface-secondary hover:text-text-primary disabled:opacity-50 dark:text-text-dark-secondary dark:hover:bg-surface-dark-secondary dark:hover:text-text-dark-primary"
+            className="flex items-center gap-1.5 rounded px-2 py-1 text-xs text-text-secondary hover:bg-surface-hover hover:text-text-primary disabled:opacity-50 dark:text-text-dark-secondary dark:hover:bg-surface-dark-hover dark:hover:text-text-dark-primary"
           >
             <RefreshCw
               className={`h-3.5 w-3.5 ${refreshMutation.isPending ? 'animate-spin' : ''}`}
@@ -84,19 +85,17 @@ export const MarketplaceSettingsTab: React.FC = () => {
               className="pl-9"
             />
           </div>
-          <select
-            value={selectedCategory}
-            onChange={(e) => setSelectedCategory(e.target.value)}
-            className="border-border-primary bg-surface-primary dark:border-border-dark-primary dark:bg-surface-dark-primary rounded-md border px-3 py-2 text-sm text-text-primary focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 dark:text-text-dark-primary"
-          >
-            {CATEGORIES.map((category) => (
-              <option key={category} value={category}>
-                {category === 'all'
-                  ? 'All Categories'
-                  : category.charAt(0).toUpperCase() + category.slice(1)}
-              </option>
-            ))}
-          </select>
+          <div className="w-44 shrink-0">
+            <Select value={selectedCategory} onChange={(e) => setSelectedCategory(e.target.value)}>
+              {CATEGORIES.map((category) => (
+                <option key={category} value={category}>
+                  {category === 'all'
+                    ? 'All Categories'
+                    : category.charAt(0).toUpperCase() + category.slice(1)}
+                </option>
+              ))}
+            </Select>
+          </div>
         </div>
 
         {isLoading ? (
@@ -124,7 +123,7 @@ export const MarketplaceSettingsTab: React.FC = () => {
             </button>
           </div>
         ) : filteredPlugins.length === 0 ? (
-          <div className="border-border-primary dark:border-border-dark-primary rounded-lg border p-8 text-center">
+          <div className="rounded-lg border border-border p-8 text-center dark:border-border-dark">
             <Store className="mx-auto mb-3 h-8 w-8 text-text-quaternary dark:text-text-dark-quaternary" />
             <p className="text-sm text-text-tertiary dark:text-text-dark-tertiary">
               {plugins.length === 0 ? 'No plugins available' : 'No plugins match your search'}
