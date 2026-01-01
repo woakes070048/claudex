@@ -68,7 +68,7 @@ export function ChatPage() {
     chatId,
   );
 
-  const { contextUsage, refetchContextUsage } = useContextUsageState(chatId, currentChat);
+  const { contextUsage, updateContextUsage } = useContextUsageState(chatId, currentChat);
 
   const { data: settings } = useSettingsQuery();
 
@@ -109,7 +109,7 @@ export function ChatPage() {
     isInitialLoading: messagesQuery.isLoading,
     queryClient,
     refetchFilesMetadata,
-    refetchContextUsage,
+    onContextUsageUpdate: updateContextUsage,
     selectedModelId,
     permissionMode,
     thinkingMode,

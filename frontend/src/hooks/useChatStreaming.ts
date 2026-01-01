@@ -3,7 +3,7 @@ import type { Dispatch, FormEvent, SetStateAction } from 'react';
 import { logger } from '@/utils/logger';
 import { QueryClient } from '@tanstack/react-query';
 import { useStreamStore } from '@/store';
-import type { Chat, Message, PermissionRequest, StreamState } from '@/types';
+import type { Chat, ContextUsage, Message, PermissionRequest, StreamState } from '@/types';
 import { cleanupExpiredPdfBlobs, storePdfBlobUrl } from '@/hooks/usePdfBlobCache';
 import { useMessageActions } from '@/hooks/useMessageActions';
 import { useInputState } from '@/hooks/useInputState';
@@ -23,7 +23,7 @@ interface UseChatStreamingParams {
   isInitialLoading: boolean;
   queryClient: QueryClient;
   refetchFilesMetadata: () => Promise<unknown>;
-  refetchContextUsage: () => Promise<unknown> | void;
+  onContextUsageUpdate?: (data: ContextUsage, chatId?: string) => void;
   selectedModelId: string | null | undefined;
   permissionMode: 'plan' | 'ask' | 'auto';
   thinkingMode: string | null | undefined;
@@ -66,7 +66,7 @@ export function useChatStreaming({
   isInitialLoading,
   queryClient,
   refetchFilesMetadata,
-  refetchContextUsage,
+  onContextUsageUpdate,
   selectedModelId,
   permissionMode,
   thinkingMode,
@@ -109,7 +109,7 @@ export function useChatStreaming({
     currentChat,
     queryClient,
     refetchFilesMetadata,
-    refetchContextUsage,
+    onContextUsageUpdate,
     onPermissionRequest,
     setMessages,
     setStreamState,

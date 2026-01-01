@@ -14,6 +14,7 @@ from sse_starlette.sse import EventSourceResponse
 
 from app.constants import (
     REDIS_KEY_CHAT_CANCEL,
+    REDIS_KEY_CHAT_CONTEXT_USAGE,
     REDIS_KEY_CHAT_REVOKED,
     REDIS_KEY_CHAT_STREAM,
     REDIS_KEY_CHAT_TASK,
@@ -367,6 +368,23 @@ async def get_chat_context_usage(
     chat_service: ChatService = Depends(get_chat_service),
 ) -> ContextUsage:
     chat = await chat_service.get_chat(chat_id, current_user)
+
+    try:
+        async with redis_connection() as redis:
+            cache_key = REDIS_KEY_CHAT_CONTEXT_USAGE.format(chat_id=str(chat_id))
+            cached = await redis.get(cache_key)
+            if cached:
+                data = json.loads(cached)
+                return ContextUsage(
+                    tokens_used=data.get("tokens_used", 0),
+                    context_window=data.get(
+                        "context_window", settings.CONTEXT_WINDOW_TOKENS
+                    ),
+                    percentage=data.get("percentage", 0.0),
+                )
+    except (RedisError, json.JSONDecodeError, KeyError) as e:
+        logger.warning("Failed to get context usage from cache: %s", e)
+
     tokens_used = chat.context_token_usage or 0
     context_window = settings.CONTEXT_WINDOW_TOKENS
     percentage = 0.0

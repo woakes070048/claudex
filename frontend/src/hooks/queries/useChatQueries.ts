@@ -54,6 +54,7 @@ export const useContextUsageQuery = (
     queryKey: queryKeys.contextUsage(chatId),
     queryFn: () => chatService.getContextUsage(chatId),
     enabled: !!chatId,
+    staleTime: 0,
     ...options,
   });
 };

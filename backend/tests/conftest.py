@@ -14,6 +14,7 @@ from e2b import AsyncSandbox
 from filelock import FileLock
 from httpx import ASGITransport, AsyncClient
 from redis.asyncio import Redis
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import NullPool
@@ -58,6 +59,7 @@ from app.services.sandbox_providers import SandboxProviderType, create_sandbox_p
 from app.services.sandbox_providers.types import DockerConfig
 from app.services.storage import StorageService
 from app.services.user import UserService
+import app.tasks.chat_processor as chat_processor_module
 
 settings = get_settings()
 
@@ -289,9 +291,6 @@ class TestChatService(ChatService):
         attachments,
         is_custom_prompt=False,
     ):
-        import app.tasks.chat_processor as chat_processor_module
-        from unittest.mock import MagicMock
-
         task_id = str(uuid.uuid4())
         mock_task = MagicMock()
         mock_task.request = MagicMock()
@@ -309,6 +308,7 @@ class TestChatService(ChatService):
             "title": chat.title,
             "sandbox_id": chat.sandbox_id,
             "session_id": chat.session_id,
+            "sandbox_provider": chat.sandbox_provider,
         }
 
         @asynccontextmanager
@@ -337,6 +337,28 @@ class TestChatService(ChatService):
             )
         finally:
             chat_processor_module.get_celery_session = original_get_celery_session
+
+        async with self._test_session_factory() as session:
+            result = await session.execute(select(Chat).filter(Chat.id == chat.id))
+            refreshed_chat = result.scalar_one_or_none()
+
+        if refreshed_chat and refreshed_chat.session_id and refreshed_chat.sandbox_id:
+            usage_redis_client = Redis.from_url(
+                settings.REDIS_URL, decode_responses=True
+            )
+            try:
+                await chat_processor_module.fetch_and_broadcast_context_usage(
+                    chat_id=str(refreshed_chat.id),
+                    session_id=refreshed_chat.session_id,
+                    sandbox_id=refreshed_chat.sandbox_id,
+                    sandbox_provider=refreshed_chat.sandbox_provider or "docker",
+                    user_id=str(user.id),
+                    model_id=model_id,
+                    redis_client=usage_redis_client,
+                    session_factory=self._test_session_factory,
+                )
+            finally:
+                await usage_redis_client.close()
 
         mock_result = MagicMock()
         mock_result.id = task_id
@@ -518,6 +540,7 @@ async def docker_integration_chat_fixture(
         title="Docker Integration Test Chat",
         user_id=user.id,
         sandbox_id=sandbox_id,
+        sandbox_provider="docker",
     )
     db_session.add(chat)
     await db_session.flush()
@@ -656,12 +679,17 @@ async def integration_chat_fixture(
 ) -> AsyncGenerator[tuple[User, Chat, SandboxService], None]:
     service, sandbox_id = real_sandbox
     user = integration_user_fixture
+    result = await db_session.execute(
+        select(UserSettings).filter(UserSettings.user_id == user.id)
+    )
+    user_settings = result.scalar_one_or_none()
 
     chat = Chat(
         id=uuid.uuid4(),
         title="Integration Test Chat",
         user_id=user.id,
         sandbox_id=sandbox_id,
+        sandbox_provider=user_settings.sandbox_provider if user_settings else None,
     )
     db_session.add(chat)
     await db_session.flush()

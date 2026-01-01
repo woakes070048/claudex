@@ -226,11 +226,6 @@ class ClaudeAgentService:
             options=options,
             user_settings=user_settings,
         )
-        e2b_api_key = (
-            user_settings.e2b_api_key
-            if sandbox_provider != SandboxProviderType.DOCKER
-            else None
-        )
 
         async with transport:
             self._active_transport = transport
@@ -259,21 +254,6 @@ class ClaudeAgentService:
 
             finally:
                 self._active_transport = None
-
-        if self.current_session_id:
-            options.resume = self.current_session_id
-
-        token_usage = await self._get_context_token_usage(
-            options,
-            sandbox_id=sandbox_id_str,
-            sandbox_provider=sandbox_provider,
-            e2b_api_key=e2b_api_key
-            if sandbox_provider != SandboxProviderType.DOCKER
-            else None,
-        )
-
-        if token_usage is not None:
-            await self._update_chat_token_usage(chat_id, token_usage)
 
     def get_total_cost_usd(self) -> float:
         return self._total_cost_usd
@@ -617,28 +597,41 @@ class ClaudeAgentService:
         except Exception as e:
             logger.error("Failed to update chat token usage: %s", e)
 
-    async def _get_context_token_usage(
+    async def get_context_token_usage(
         self,
-        options: ClaudeAgentOptions,
+        session_id: str,
         sandbox_id: str,
         sandbox_provider: str,
+        model_id: str,
+        user_settings: UserSettings,
         e2b_api_key: str | None = None,
     ) -> int | None:
-        # Extracts token usage by running the /context command and parsing the response.
-        # The Claude CLI outputs context info in a specific format:
-        #   <local-command-stdout>...**Tokens:** 12.5k...</local-command-stdout>
-        # We parse this with regex to extract the token count in thousands (e.g., "12.5k" -> 12500)
         try:
+            env, _ = await self._build_auth_env(model_id, user_settings)
+
+            options = ClaudeAgentOptions(
+                system_prompt="",
+                permission_mode="bypassPermissions",
+                model=model_id,
+                cwd="/home/user",
+                user="user",
+                resume=session_id,
+                env=env,
+            )
+
             prompt_message = {
                 "type": "user",
                 "message": {"role": "user", "content": "/context"},
                 "parent_tool_use_id": None,
-                "session_id": options.resume,
+                "session_id": session_id,
             }
 
             prompt_iterable = self._create_prompt_iterable(prompt_message)
 
             if sandbox_provider != SandboxProviderType.DOCKER and not e2b_api_key:
+                logger.warning(
+                    "Skipping context usage fetch: E2B API key not configured"
+                )
                 return None
 
             transport = self._create_sandbox_transport(
@@ -672,7 +665,9 @@ class ClaudeAgentService:
             if not response_content:
                 return None
 
-            # Parse token count from CLI output: **Tokens:** 12.5k
+            # The Claude CLI outputs context info in a specific format:
+            #   <local-command-stdout>...**Tokens:** 12.5k...</local-command-stdout>
+            # Parse with regex to extract token count in thousands (e.g., "12.5k" -> 12500)
             stdout_match = re.search(
                 r"<local-command-stdout>(.*?)</local-command-stdout>",
                 response_content,

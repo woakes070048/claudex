@@ -5,7 +5,14 @@ import { useReviewStore } from '@/store';
 import { appendEventToLog } from '@/utils/stream';
 import { playNotificationSound } from '@/utils/audio';
 import { queryKeys, useSettingsQuery } from '@/hooks/queries';
-import type { AssistantStreamEvent, Chat, Message, PermissionRequest, StreamState } from '@/types';
+import type {
+  AssistantStreamEvent,
+  Chat,
+  ContextUsage,
+  Message,
+  PermissionRequest,
+  StreamState,
+} from '@/types';
 import { useMessageCache } from '@/hooks/useMessageCache';
 import { streamService } from '@/services/streamService';
 import type { StreamOptions } from '@/services/streamService';
@@ -15,7 +22,7 @@ interface UseStreamCallbacksParams {
   currentChat: Chat | undefined;
   queryClient: QueryClient;
   refetchFilesMetadata: () => Promise<unknown>;
-  refetchContextUsage: () => Promise<unknown> | void;
+  onContextUsageUpdate?: (data: ContextUsage, chatId?: string) => void;
   onPermissionRequest?: (request: PermissionRequest) => void;
   setMessages: Dispatch<SetStateAction<Message[]>>;
   setStreamState: Dispatch<SetStateAction<StreamState>>;
@@ -44,7 +51,7 @@ export function useStreamCallbacks({
   currentChat,
   queryClient,
   refetchFilesMetadata,
-  refetchContextUsage,
+  onContextUsageUpdate,
   onPermissionRequest,
   setMessages,
   setStreamState,
@@ -60,6 +67,13 @@ export function useStreamCallbacks({
   } | null>(null);
 
   const pendingUserMessageIdRef = useRef<string | null>(null);
+  const timerIdsRef = useRef<NodeJS.Timeout[]>([]);
+
+  useEffect(() => {
+    return () => {
+      timerIdsRef.current.forEach(clearTimeout);
+    };
+  }, []);
 
   const { updateMessageInCache, addMessageToCache, removeMessagesFromCache } = useMessageCache({
     chatId,
@@ -88,6 +102,13 @@ export function useStreamCallbacks({
         return;
       }
 
+      if (event.type === 'system' && event.data?.context_usage && onContextUsageUpdate) {
+        const eventChatId =
+          typeof event.data.chat_id === 'string' ? (event.data.chat_id as string) : undefined;
+        onContextUsageUpdate(event.data.context_usage as ContextUsage, eventChatId);
+        return;
+      }
+
       setMessages((prevMessages) =>
         prevMessages.map((msg) =>
           msg.id === messageId ? { ...msg, content: appendEventToLog(msg.content, event) } : msg,
@@ -99,7 +120,7 @@ export function useStreamCallbacks({
         content: appendEventToLog(cachedMsg.content, event),
       }));
     },
-    [updateMessageInCache, onPermissionRequest, setMessages, pendingStopRef],
+    [updateMessageInCache, onPermissionRequest, onContextUsageUpdate, setMessages, pendingStopRef],
   );
 
   const onComplete = useCallback(() => {
@@ -117,18 +138,26 @@ export function useStreamCallbacks({
       });
     }
 
-    setTimeout(() => {
-      queryClient.invalidateQueries({ queryKey: [queryKeys.auth.usage] });
-    }, 2000);
+    timerIdsRef.current.forEach(clearTimeout);
+    timerIdsRef.current = [];
+
+    timerIdsRef.current.push(
+      setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: [queryKeys.auth.usage] });
+      }, 2000),
+    );
 
     if (chatId) {
-      Promise.resolve(refetchContextUsage()).catch(() => {});
+      timerIdsRef.current.push(
+        setTimeout(() => {
+          queryClient.invalidateQueries({ queryKey: queryKeys.contextUsage(chatId) });
+        }, 6000),
+      );
     }
   }, [
     chatId,
     currentChat?.sandbox_id,
     queryClient,
-    refetchContextUsage,
     refetchFilesMetadata,
     setStreamState,
     setCurrentMessageId,
