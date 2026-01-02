@@ -655,9 +655,7 @@ class LocalDockerProvider(SandboxProvider):
         loop = asyncio.get_running_loop()
         source_container = await self._get_container(source_sandbox_id)
 
-        temp_image = await loop.run_in_executor(
-            self._executor, source_container.commit
-        )
+        temp_image = await loop.run_in_executor(self._executor, source_container.commit)
 
         new_sandbox_id = str(uuid.uuid4())[:12]
         new_container: Any = None

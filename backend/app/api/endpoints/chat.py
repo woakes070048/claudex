@@ -44,7 +44,12 @@ from app.models.schemas import (
     RestoreRequest,
 )
 from app.services.chat import ChatService
-from app.services.exceptions import ChatException, ClaudeAgentException, MessageException, SandboxException
+from app.services.exceptions import (
+    ChatException,
+    ClaudeAgentException,
+    MessageException,
+    SandboxException,
+)
 from app.services.permission_manager import PermissionManager
 from app.utils.redis import redis_connection, redis_pubsub
 from app.models.schemas.errors import HTTPErrorResponse
@@ -501,7 +506,9 @@ async def fork_chat(
             detail="Database error while forking chat",
         )
     except FileNotFoundError as e:
-        logger.error("Checkpoint not found forking chat %s: %s", chat_id, e, exc_info=True)
+        logger.error(
+            "Checkpoint not found forking chat %s: %s", chat_id, e, exc_info=True
+        )
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Checkpoint not found",

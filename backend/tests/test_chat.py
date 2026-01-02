@@ -767,7 +767,9 @@ class TestForkChat:
         assistant_msg = next(m for m in copied_messages if m["role"] == "assistant")
         assert assistant_msg["model_id"] == "claude-haiku-4-5"
 
-        first_msg = next(m for m in copied_messages if m["content"] == "First user message")
+        first_msg = next(
+            m for m in copied_messages if m["content"] == "First user message"
+        )
         assert len(first_msg["attachments"]) == 1
         assert first_msg["attachments"][0]["filename"] == "test.txt"
         assert first_msg["attachments"][0]["file_url"] != attachment.file_url
