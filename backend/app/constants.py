@@ -14,6 +14,9 @@ REDIS_KEY_PERMISSION_RESPONSE: Final[str] = "permission_response:{request_id}"
 REDIS_KEY_USER_SETTINGS: Final[str] = "user_settings:{user_id}"
 REDIS_KEY_MODELS_LIST: Final[str] = "models:list:{active_only}"
 REDIS_KEY_CHAT_CONTEXT_USAGE: Final[str] = "chat:{chat_id}:context_usage"
+REDIS_KEY_CHAT_QUEUE: Final[str] = "chat:{chat_id}:queue"
+
+QUEUE_MESSAGE_TTL_SECONDS: Final[int] = 3600
 
 SANDBOX_AUTO_PAUSE_TIMEOUT: Final[int] = 3000
 SANDBOX_DEFAULT_COMMAND_TIMEOUT: Final[int] = 120

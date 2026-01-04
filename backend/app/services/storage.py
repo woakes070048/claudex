@@ -29,6 +29,7 @@ class StorageService:
         file: UploadFile,
         sandbox_id: str | None = None,
         attachment_id: str | None = None,
+        user_id: str | None = None,
     ) -> MessageAttachmentDict:
         if file.content_type not in settings.ALLOWED_FILE_TYPES:
             raise StorageException(f"Invalid file type: {file.content_type}")
@@ -67,15 +68,23 @@ class StorageService:
 
         unique_filename = f"{uuid4()}{ext}"
 
-        physical_file_path = self.storage_path / folder / unique_filename
-        physical_file_path.write_bytes(contents)
+        if attachment_id:
+            relative_file_path = f"{folder}/{unique_filename}"
+            physical_file_path = self.storage_path / relative_file_path
+        else:
+            if not user_id:
+                raise StorageException("user_id is required for temp attachments")
 
-        relative_file_path = f"{folder}/{unique_filename}"
+            relative_file_path = f"temp/{user_id}/{folder}/{unique_filename}"
+            physical_file_path = self.storage_path / relative_file_path
+            physical_file_path.parent.mkdir(parents=True, exist_ok=True)
+
+        physical_file_path.write_bytes(contents)
 
         if attachment_id:
             file_url = f"{settings.BASE_URL}/api/v1/attachments/{attachment_id}/preview"
         else:
-            file_url = f"{settings.BASE_URL}/api/v1/attachments/temp/preview"
+            file_url = f"{settings.BASE_URL}/api/v1/attachments/temp/preview?path={relative_file_path}"
 
         # Dual-write: file stored locally (for preview API) AND uploaded to sandbox (for AI access).
         # Sandbox upload failure is logged but not raised - local copy ensures preview still works.

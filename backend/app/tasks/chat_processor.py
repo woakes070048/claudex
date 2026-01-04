@@ -11,7 +11,6 @@ def process_chat(
     prompt: str,
     system_prompt: str,
     custom_instructions: str | None,
-    user_data: dict[str, Any],
     chat_data: dict[str, Any],
     model_id: str,
     permission_mode: str = "auto",
@@ -20,6 +19,7 @@ def process_chat(
     thinking_mode: str | None = None,
     attachments: list[dict[str, Any]] | None = None,
     is_custom_prompt: bool = False,
+    is_queue_continuation: bool = False,
 ) -> str:
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
@@ -31,7 +31,6 @@ def process_chat(
                 prompt=prompt,
                 system_prompt=system_prompt,
                 custom_instructions=custom_instructions,
-                user_data=user_data,
                 chat_data=chat_data,
                 model_id=model_id,
                 permission_mode=permission_mode,
@@ -41,6 +40,7 @@ def process_chat(
                 attachments=attachments,
                 context_usage_trigger=fetch_context_token_usage.delay,
                 is_custom_prompt=is_custom_prompt,
+                is_queue_continuation=is_queue_continuation,
             )
         )
     finally:

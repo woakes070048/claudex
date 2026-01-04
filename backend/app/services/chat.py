@@ -389,7 +389,11 @@ class ChatService(BaseDbService[Chat]):
             attachments = list(
                 await asyncio.gather(
                     *[
-                        self.storage_service.save_file(file, sandbox_id=chat.sandbox_id)
+                        self.storage_service.save_file(
+                            file,
+                            sandbox_id=chat.sandbox_id,
+                            user_id=str(current_user.id),
+                        )
                         for file in request.attached_files
                     ]
                 )
@@ -695,11 +699,6 @@ class ChatService(BaseDbService[Chat]):
             prompt=prompt,
             system_prompt=system_prompt,
             custom_instructions=custom_instructions,
-            user_data={
-                "id": str(user.id),
-                "email": user.email,
-                "username": user.username,
-            },
             chat_data={
                 "id": str(chat.id),
                 "user_id": str(chat.user_id),
