@@ -137,3 +137,81 @@ export const useDeleteSecretMutation = (
   options?: UseMutationOptions<void, Error, { sandboxId: string; key: string }>,
 ) =>
   useSecretMutation(({ sandboxId, key }) => sandboxService.deleteSecret(sandboxId, key), options);
+
+interface BrowserStatus {
+  running: boolean;
+  current_url?: string;
+}
+
+export const useVNCUrlQuery = (
+  sandboxId: string,
+  options?: Partial<UseQueryOptions<string | null>>,
+) => {
+  return useQuery({
+    queryKey: queryKeys.sandbox.vncUrl(sandboxId),
+    queryFn: () => sandboxService.getVNCUrl(sandboxId),
+    enabled: !!sandboxId,
+    ...options,
+  });
+};
+
+export const useBrowserStatusQuery = (
+  sandboxId: string,
+  options?: Partial<UseQueryOptions<BrowserStatus>>,
+) => {
+  return useQuery({
+    queryKey: queryKeys.sandbox.browserStatus(sandboxId),
+    queryFn: () => sandboxService.getBrowserStatus(sandboxId),
+    enabled: !!sandboxId,
+    refetchInterval: 5000,
+    ...options,
+  });
+};
+
+interface StartBrowserParams {
+  sandboxId: string;
+  url?: string;
+}
+
+export const useStartBrowserMutation = (
+  options?: UseMutationOptions<BrowserStatus, Error, StartBrowserParams>,
+) => {
+  const queryClient = useQueryClient();
+  const { onSuccess, ...restOptions } = options ?? {};
+
+  return useMutation({
+    mutationFn: ({ sandboxId, url }) => sandboxService.startBrowser(sandboxId, url),
+    onSuccess: async (data, variables, context, mutation) => {
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.sandbox.browserStatus(variables.sandboxId),
+      });
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.sandbox.vncUrl(variables.sandboxId),
+      });
+      if (onSuccess) {
+        await onSuccess(data, variables, context, mutation);
+      }
+    },
+    ...restOptions,
+  });
+};
+
+export const useStopBrowserMutation = (
+  options?: UseMutationOptions<void, Error, { sandboxId: string }>,
+) => {
+  const queryClient = useQueryClient();
+  const { onSuccess, ...restOptions } = options ?? {};
+
+  return useMutation({
+    mutationFn: ({ sandboxId }) => sandboxService.stopBrowser(sandboxId),
+    onSuccess: async (data, variables, context, mutation) => {
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.sandbox.browserStatus(variables.sandboxId),
+      });
+      if (onSuccess) {
+        await onSuccess(data, variables, context, mutation);
+      }
+    },
+    ...restOptions,
+  });
+};

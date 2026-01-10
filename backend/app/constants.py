@@ -29,6 +29,8 @@ DOCKER_AVAILABLE_PORTS: Final[list[int]] = [
     3000,
     3001,
     5000,
+    5900,
+    6080,
     8000,
     8080,
     5173,
@@ -40,6 +42,9 @@ DOCKER_AVAILABLE_PORTS: Final[list[int]] = [
     1234,
     4000,
 ]
+
+VNC_PORT: Final[int] = 5900
+VNC_WEBSOCKET_PORT: Final[int] = 6080
 
 SANDBOX_SYSTEM_VARIABLES: Final[list[str]] = [
     "SHELL",

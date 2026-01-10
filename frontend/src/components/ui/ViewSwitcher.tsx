@@ -1,4 +1,12 @@
-import { MessagesSquare, Code, SquareTerminal, KeyRound, Globe, Smartphone } from 'lucide-react';
+import {
+  MessagesSquare,
+  Code,
+  SquareTerminal,
+  KeyRound,
+  Globe,
+  Smartphone,
+  Monitor,
+} from 'lucide-react';
 import { useUIStore } from '@/store';
 import { cn } from '@/utils/cn';
 import type { ViewType } from '@/types/ui.types';
@@ -29,6 +37,7 @@ const buttons: ActivityBarButton[] = [
   { view: 'secrets', icon: KeyRound, label: 'Secrets' },
   { view: 'webPreview', icon: Globe, label: 'Web Preview' },
   { view: 'mobilePreview', icon: Smartphone, label: 'Mobile Preview' },
+  { view: 'browser', icon: Monitor, label: 'Browser' },
 ];
 
 export function ActivityBar() {

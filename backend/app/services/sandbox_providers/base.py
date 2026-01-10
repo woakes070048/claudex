@@ -460,9 +460,7 @@ class SandboxProvider(ABC):
         value: str,
     ) -> None:
         export_command = self.format_export_command(key, value)
-        await self.execute_command(
-            sandbox_id, f'echo "{export_command}" >> ~/.bashrc && source ~/.bashrc'
-        )
+        await self.execute_command(sandbox_id, f'echo "{export_command}" >> ~/.bashrc')
 
     async def delete_secret(
         self,
@@ -490,6 +488,9 @@ class SandboxProvider(ABC):
     @abstractmethod
     async def get_ide_url(self, sandbox_id: str) -> str | None:
         pass
+
+    async def get_vnc_url(self, sandbox_id: str) -> str | None:
+        return None
 
     async def __aenter__(self) -> "SandboxProvider":
         return self

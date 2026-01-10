@@ -11,6 +11,7 @@ from app.core.deps import (
 )
 from app.models.schemas import (
     AddSecretRequest,
+    BrowserStatusResponse,
     FileContentResponse,
     FileMetadata,
     IDEUrlResponse,
@@ -20,10 +21,12 @@ from app.models.schemas import (
     SandboxFilesMetadataResponse,
     SecretResponse,
     SecretsListResponse,
+    StartBrowserRequest,
     UpdateFileRequest,
     UpdateFileResponse,
     UpdateIDEThemeRequest,
     UpdateSecretRequest,
+    VNCUrlResponse,
 )
 from app.services.exceptions import SandboxException
 from app.services.sandbox import SandboxService
@@ -77,6 +80,45 @@ async def get_ide_url(
 ) -> IDEUrlResponse:
     url = await sandbox_service.get_ide_url(context.sandbox_id)
     return IDEUrlResponse(url=url)
+
+
+@router.get("/{sandbox_id}/vnc-url", response_model=VNCUrlResponse)
+async def get_vnc_url(
+    context: SandboxContext = Depends(get_sandbox_context),
+    sandbox_service: SandboxService = Depends(get_sandbox_service_for_context),
+) -> VNCUrlResponse:
+    url = await sandbox_service.get_vnc_url(context.sandbox_id)
+    return VNCUrlResponse(url=url)
+
+
+@router.post("/{sandbox_id}/browser/start", response_model=BrowserStatusResponse)
+@handle_sandbox_errors("start browser")
+async def start_browser(
+    request: StartBrowserRequest,
+    context: SandboxContext = Depends(get_sandbox_context),
+    sandbox_service: SandboxService = Depends(get_sandbox_service_for_context),
+) -> BrowserStatusResponse:
+    await sandbox_service.start_browser(context.sandbox_id, request.url)
+    return BrowserStatusResponse(running=True, current_url=request.url)
+
+
+@router.post("/{sandbox_id}/browser/stop", response_model=MessageResponse)
+@handle_sandbox_errors("stop browser")
+async def stop_browser(
+    context: SandboxContext = Depends(get_sandbox_context),
+    sandbox_service: SandboxService = Depends(get_sandbox_service_for_context),
+) -> MessageResponse:
+    await sandbox_service.stop_browser(context.sandbox_id)
+    return MessageResponse(message="Browser stopped")
+
+
+@router.get("/{sandbox_id}/browser/status", response_model=BrowserStatusResponse)
+async def get_browser_status(
+    context: SandboxContext = Depends(get_sandbox_context),
+    sandbox_service: SandboxService = Depends(get_sandbox_service_for_context),
+) -> BrowserStatusResponse:
+    result = await sandbox_service.get_browser_status(context.sandbox_id)
+    return BrowserStatusResponse(running=result.get("running", False))
 
 
 @router.get(

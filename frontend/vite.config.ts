@@ -5,9 +5,13 @@ import path from 'path';
 export default defineConfig({
   plugins: [react()],
   optimizeDeps: {
-    include: ['mermaid', 'antd', '@tanstack/react-query', 'use-sync-external-store/shim/index.js'],
+    include: ['mermaid', '@tanstack/react-query'],
+    esbuildOptions: {
+      target: 'esnext',
+    },
   },
   build: {
+    target: 'esnext',
     commonjsOptions: {
       include: [/mermaid/, /antd/, /@tanstack/, /node_modules/],
       transformMixedEsModules: true,

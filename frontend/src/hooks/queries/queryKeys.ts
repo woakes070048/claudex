@@ -15,6 +15,8 @@ export const queryKeys = {
     filesMetadata: (sandboxId: string) => ['sandbox', sandboxId, 'files-metadata'] as const,
     secrets: (sandboxId: string) => ['sandbox', sandboxId, 'secrets'] as const,
     ideUrl: (sandboxId: string) => ['sandbox', sandboxId, 'ide-url'] as const,
+    vncUrl: (sandboxId: string) => ['sandbox', sandboxId, 'vnc-url'] as const,
+    browserStatus: (sandboxId: string) => ['sandbox', sandboxId, 'browser-status'] as const,
   },
   models: 'models',
   scheduling: {

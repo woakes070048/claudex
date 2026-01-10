@@ -11,6 +11,7 @@ from typing import Any
 from app.constants import (
     DOCKER_AVAILABLE_PORTS,
     SANDBOX_DEFAULT_COMMAND_TIMEOUT,
+    VNC_WEBSOCKET_PORT,
 )
 from app.services.exceptions import SandboxException
 from app.services.sandbox_providers.base import LISTENING_PORTS_COMMAND, SandboxProvider
@@ -118,6 +119,7 @@ class LocalDockerProvider(SandboxProvider):
                 "TERM": "xterm-256color",
                 "HOME": self.config.user_home,
                 "USER": "user",
+                "OPENVSCODE_PORT": str(self.config.openvscode_port),
             },
         )
         return container
@@ -136,8 +138,6 @@ class LocalDockerProvider(SandboxProvider):
                 self._executor, lambda: self._extract_port_mappings(container)
             )
             self._port_mappings[sandbox_id] = port_map
-
-            await self._start_ide_server(sandbox_id)
 
             return sandbox_id
         except Exception as e:
@@ -617,6 +617,21 @@ class LocalDockerProvider(SandboxProvider):
             return None
         return f"{self.config.preview_base_url}:{host_port}/?folder=/home/user"
 
+    async def get_vnc_url(self, sandbox_id: str) -> str | None:
+        if self.config.sandbox_domain:
+            subdomain = f"sandbox-{sandbox_id}-{VNC_WEBSOCKET_PORT}"
+            return f"wss://{subdomain}.{self.config.sandbox_domain}"
+
+        await self.connect_sandbox(sandbox_id)
+        port_map = self._port_mappings.get(sandbox_id, {})
+        host_port = port_map.get(VNC_WEBSOCKET_PORT)
+        if not host_port:
+            return None
+        base_url = self.config.preview_base_url.replace("http://", "ws://").replace(
+            "https://", "wss://"
+        )
+        return f"{base_url}:{host_port}"
+
     def _create_container_from_image(self, sandbox_id: str, image: Any) -> Any:
         client = self._get_docker_client()
         labels = self._build_traefik_labels(sandbox_id)
@@ -645,6 +660,7 @@ class LocalDockerProvider(SandboxProvider):
                 "TERM": "xterm-256color",
                 "HOME": self.config.user_home,
                 "USER": "user",
+                "OPENVSCODE_PORT": str(self.config.openvscode_port),
             },
         )
         return container

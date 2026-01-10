@@ -39,14 +39,17 @@ from .pagination import (
 from .permissions import PermissionRequest, PermissionRequestResponse, PermissionResult
 from .sandbox import (
     AddSecretRequest,
+    BrowserStatusResponse,
     FileContentResponse,
     FileMetadata,
     IDEUrlResponse,
     SandboxFilesMetadataResponse,
+    StartBrowserRequest,
     UpdateFileRequest,
     UpdateFileResponse,
     UpdateIDEThemeRequest,
     UpdateSecretRequest,
+    VNCUrlResponse,
 )
 from .scheduling import (
     PaginatedTaskExecutions,
@@ -123,14 +126,17 @@ __all__ = [
     "PermissionResult",
     # sandbox
     "AddSecretRequest",
+    "BrowserStatusResponse",
     "FileContentResponse",
     "FileMetadata",
     "IDEUrlResponse",
     "SandboxFilesMetadataResponse",
+    "StartBrowserRequest",
     "UpdateFileRequest",
     "UpdateFileResponse",
     "UpdateIDEThemeRequest",
     "UpdateSecretRequest",
+    "VNCUrlResponse",
     # scheduling
     "PaginatedTaskExecutions",
     "ScheduledTaskBase",

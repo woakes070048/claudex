@@ -54,3 +54,16 @@ class UpdateIDEThemeRequest(BaseModel):
 
 class IDEUrlResponse(BaseModel):
     url: str | None
+
+
+class VNCUrlResponse(BaseModel):
+    url: str | None
+
+
+class StartBrowserRequest(BaseModel):
+    url: str = Field(default="about:blank")
+
+
+class BrowserStatusResponse(BaseModel):
+    running: bool
+    current_url: str | None = None

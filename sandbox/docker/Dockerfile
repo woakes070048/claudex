@@ -6,6 +6,8 @@ ENV PATH="/home/user/.local/bin:/home/user/.nvm/versions/node/v20.18.0/bin:$PATH
 ENV NVM_DIR="/home/user/.nvm"
 ENV NODE_VERSION=20.18.0
 ENV TERM=xterm-256color
+ENV DISPLAY=:99
+ENV OPENVSCODE_PORT=8765
 
 RUN apt-get update && apt-get install -y \
     curl \
@@ -25,8 +27,19 @@ RUN apt-get update && apt-get install -y \
     ca-certificates \
     gnupg \
     iproute2 \
+    xvfb \
+    x11vnc \
+    websockify \
+    x11-xserver-utils \
+    fonts-liberation \
+    libnss3 \
+    libxss1 \
+    libasound2 \
+    xdotool \
+    && add-apt-repository -y ppa:xtradeb/apps \
     && add-apt-repository -y ppa:deadsnakes/ppa \
     && apt-get update \
+    && apt-get install -y chromium --no-install-recommends \
     && apt-get install -y python3.11 python3.11-venv python3.11-dev \
     && update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.11 1 \
     && update-alternatives --install /usr/bin/python python /usr/bin/python3.11 1 \
@@ -95,6 +108,13 @@ RUN echo 'export NVM_DIR="$HOME/.nvm"' >> ~/.bashrc && \
 RUN mkdir -p /home/user/.claude && \
     mkdir -p /home/user/.checkpoints
 
-EXPOSE 3000 3001 5000 8000 8080 8765 5173 4200 8888 4321 3030 5500 1234 4000
+EXPOSE 3000 3001 5000 5900 6080 8000 8080 8765 5173 4200 8888 4321 3030 5500 1234 4000
 
+COPY docker/start-vnc.sh /usr/local/bin/start-vnc.sh
+RUN sudo chmod +x /usr/local/bin/start-vnc.sh
+
+COPY docker/entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN sudo chmod +x /usr/local/bin/entrypoint.sh
+
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
 CMD ["/bin/bash"]

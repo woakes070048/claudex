@@ -5,11 +5,12 @@ import { Sidebar, useLayoutSidebar } from '@/components/layout';
 import { useUIStore, useChatStore } from '@/store';
 import { ViewSwitcher } from '@/components/ui/ViewSwitcher';
 import {
-  TerminalView,
-  SecretsView,
-  WebPreviewView,
-  MobilePreviewView,
+  BrowserView,
   IDEView,
+  MobilePreviewView,
+  SecretsView,
+  TerminalView,
+  WebPreviewView,
 } from '@/components/views';
 import { Chat as ChatComponent } from '@/components/chat/chat-window/Chat';
 import { Editor } from '@/components/editor/editor-core/Editor';
@@ -232,7 +233,7 @@ export function ChatPage() {
   return (
     <div className="relative flex h-full">
       <ViewSwitcher />
-      <div className="ml-12 flex h-full flex-1 overflow-hidden bg-surface-secondary text-text-primary dark:bg-surface-dark-secondary dark:text-text-dark-primary">
+      <div className="flex h-full flex-1 overflow-hidden bg-surface-secondary pl-12 text-text-primary dark:bg-surface-dark-secondary dark:text-text-dark-primary">
         <div className={`${isTerminalView ? 'flex' : 'hidden'} h-full flex-1`}>
           <TerminalView currentChat={currentChat} isVisible={isTerminalView} />
         </div>
@@ -292,6 +293,9 @@ export function ChatPage() {
         )}
         {currentView === 'mobilePreview' && (
           <MobilePreviewView sandboxId={currentChat?.sandbox_id} />
+        )}
+        {currentView === 'browser' && (
+          <BrowserView sandboxId={currentChat?.sandbox_id} isActive={currentView === 'browser'} />
         )}
       </div>
 

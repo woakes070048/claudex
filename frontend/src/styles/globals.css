@@ -278,3 +278,9 @@ body {
 .mermaid-container svg .nodeLabel {
   font-size: 10px !important;
 }
+
+.vnc-screen canvas {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: fill;
+}
