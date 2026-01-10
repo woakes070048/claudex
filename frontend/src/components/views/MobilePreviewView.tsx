@@ -1,4 +1,4 @@
-import { MobilePreview } from '../editor/mobile-preview/MobilePreview';
+import { MobilePreview } from '../sandbox/mobile-preview/MobilePreview';
 
 interface MobilePreviewViewProps {
   sandboxId?: string;

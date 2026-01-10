@@ -1,4 +1,4 @@
-import { SecretsView as SecretsComponent } from '../editor/secrets/SecretsView';
+import { SecretsView as SecretsComponent } from '../sandbox/secrets/SecretsView';
 
 interface SecretsViewProps {
   chatId?: string;

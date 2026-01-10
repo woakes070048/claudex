@@ -1,4 +1,4 @@
-import { WebPreview } from '../editor/web-preview/Preview';
+import { WebPreview } from '../sandbox/web-preview/Preview';
 
 interface WebPreviewViewProps {
   sandboxId?: string;

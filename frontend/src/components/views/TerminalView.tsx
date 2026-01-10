@@ -1,4 +1,4 @@
-import { TerminalPanel } from '../editor/terminal/TerminalPanel';
+import { TerminalPanel } from '../sandbox/terminal/TerminalPanel';
 import type { Chat } from '@/types';
 
 interface TerminalViewProps {

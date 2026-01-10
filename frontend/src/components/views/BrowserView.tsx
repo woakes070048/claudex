@@ -1,7 +1,7 @@
 import { memo, useState, useCallback } from 'react';
 import { Globe, RotateCcw, Play, Square } from 'lucide-react';
 import { Button, Spinner } from '@/components/ui';
-import { VNCClient } from '@/components/editor/vnc-browser/VNCClient';
+import { VNCClient } from '@/components/sandbox/vnc-browser/VNCClient';
 import {
   useVNCUrlQuery,
   useBrowserStatusQuery,
