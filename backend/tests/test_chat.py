@@ -973,11 +973,7 @@ You are a chat test agent."""
 
         await docker_async_client.patch(
             "/api/v1/settings/",
-            json={
-                "custom_agents": [
-                    {"name": "chat-test-agent", "enabled": True}
-                ]
-            },
+            json={"custom_agents": [{"name": "chat-test-agent", "enabled": True}]},
             headers=docker_auth_headers,
         )
 
@@ -1062,11 +1058,7 @@ This is a test skill for chat creation."""
 
         await docker_async_client.patch(
             "/api/v1/settings/",
-            json={
-                "custom_skills": [
-                    {"name": "chat-test-skill", "enabled": True}
-                ]
-            },
+            json={"custom_skills": [{"name": "chat-test-skill", "enabled": True}]},
             headers=docker_auth_headers,
         )
 
