@@ -404,7 +404,6 @@ class UserSettingsAdmin(ModelView, model=UserSettings):
 
     form_args = {
         "github_personal_access_token": {"label": "GitHub Token"},
-        "e2b_api_key": {"label": "E2B API Key"},
     }
 
     name = "User Settings"

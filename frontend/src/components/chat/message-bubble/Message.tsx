@@ -9,7 +9,6 @@ import { ConfirmDialog, LoadingOverlay, Button, Spinner, Tooltip } from '@/compo
 import { formatRelativeTime, formatFullTimestamp } from '@/utils/date';
 import toast from 'react-hot-toast';
 import { useChatContext } from '@/hooks/useChatContext';
-import { SandboxProvider } from '@/config/constants';
 
 export interface MessageProps {
   id: string;
@@ -41,7 +40,7 @@ export const Message = memo(function Message({
   isLastBotMessageWithCommit,
   onRestoreSuccess,
 }: MessageProps) {
-  const { chatId, sandboxId, sandboxProvider } = useChatContext();
+  const { chatId, sandboxId } = useChatContext();
   const { data: models = [] } = useModelsQuery();
   const navigate = useNavigate();
   const [isRestoring, setIsRestoring] = useState(false);
@@ -170,7 +169,7 @@ export const Message = memo(function Message({
                       </Button>
                     </Tooltip>
 
-                    {sandboxProvider === SandboxProvider.DOCKER && sandboxId && (
+                    {sandboxId && (
                       <Tooltip content={isForking ? 'Forking...' : 'Fork'} position="bottom">
                         <Button
                           onClick={handleFork}

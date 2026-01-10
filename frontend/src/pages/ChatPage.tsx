@@ -256,7 +256,6 @@ export function ChatPage() {
             attachedFiles={streamingState.inputFiles}
             contextUsage={contextUsage}
             sandboxId={currentChat?.sandbox_id}
-            sandboxProvider={currentChat?.sandbox_provider}
             chatId={chatId}
             onDismissError={streamingState.handleDismissError}
             fetchNextPage={messagesQuery.fetchNextPage}

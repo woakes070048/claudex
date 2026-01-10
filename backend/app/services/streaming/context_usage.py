@@ -35,14 +35,12 @@ class ContextUsageTracker:
         chat_id: str,
         session_id: str,
         sandbox_id: str,
-        sandbox_provider: str,
         user_id: str,
         model_id: str,
     ) -> None:
         self.chat_id = chat_id
         self.session_id = session_id
         self.sandbox_id = sandbox_id
-        self.sandbox_provider = sandbox_provider
         self.user_id = user_id
         self.model_id = model_id
 
@@ -56,17 +54,11 @@ class ContextUsageTracker:
             user_service = UserService(session_factory=session_factory)
             user_settings = await user_service.get_user_settings(UUID(self.user_id))
 
-            e2b_api_key = (
-                user_settings.e2b_api_key if self.sandbox_provider != "docker" else None
-            )
-
             token_usage = await ai_service.get_context_token_usage(
                 session_id=self.session_id,
                 sandbox_id=self.sandbox_id,
-                sandbox_provider=self.sandbox_provider,
                 model_id=self.model_id,
                 user_settings=user_settings,
-                e2b_api_key=e2b_api_key,
             )
 
             if token_usage is None:

@@ -36,18 +36,13 @@ from app.services.base import BaseDbService, SessionFactoryType
 from app.services.claude_agent import ClaudeAgentService
 from app.services.exceptions import ChatException, ErrorCode
 from app.services.message import MessageService
-from app.services.sandbox import SandboxService
-from app.services.sandbox_providers import create_sandbox_provider, SandboxProviderType
+from app.services.sandbox import DockerConfig, LocalDockerProvider, SandboxService
 from app.services.storage import StorageService
 from app.services.user import UserService
 from app.tasks.chat_processor import process_chat
 from app.utils.message_events import extract_user_prompt_and_reviews
 from app.utils.redis import redis_connection
-from app.utils.validators import (
-    APIKeyValidationError,
-    validate_e2b_api_key,
-    validate_model_api_keys,
-)
+from app.utils.validators import APIKeyValidationError, validate_model_api_keys
 
 settings = get_settings()
 logger = logging.getLogger(__name__)
@@ -150,7 +145,6 @@ class ChatService(BaseDbService[Chat]):
                 title=self._truncate_title(chat_data.title),
                 user_id=user.id,
                 sandbox_id=sandbox_id,
-                sandbox_provider=user_settings.sandbox_provider,
             )
 
             db.add(chat)
@@ -518,14 +512,6 @@ class ChatService(BaseDbService[Chat]):
     ) -> tuple[Chat, int]:
         source_chat = await self.get_chat(source_chat_id, user)
 
-        # Only Docker sandboxes support forking
-        if source_chat.sandbox_provider != SandboxProviderType.DOCKER.value:
-            raise ChatException(
-                "Fork is only supported for Docker sandboxes",
-                error_code=ErrorCode.VALIDATION_ERROR,
-                status_code=400,
-            )
-
         if not source_chat.sandbox_id:
             raise ChatException(
                 "Source chat has no sandbox",
@@ -549,8 +535,15 @@ class ChatService(BaseDbService[Chat]):
             UserSettings, await self.user_service.get_user_settings(user.id)
         )
 
-        # Use Docker provider for fork (E2B not supported)
-        provider = create_sandbox_provider(SandboxProviderType.DOCKER)
+        docker_config = DockerConfig(
+            image=settings.DOCKER_IMAGE,
+            network=settings.DOCKER_NETWORK,
+            host=settings.DOCKER_HOST,
+            preview_base_url=settings.DOCKER_PREVIEW_BASE_URL,
+            sandbox_domain=settings.DOCKER_SANDBOX_DOMAIN,
+            traefik_network=settings.DOCKER_TRAEFIK_NETWORK,
+        )
+        provider = LocalDockerProvider(config=docker_config)
         fork_sandbox_service = SandboxService(provider)
 
         try:
@@ -571,7 +564,6 @@ class ChatService(BaseDbService[Chat]):
                         title=self._truncate_title(f"Fork of {source_chat.title}"),
                         user_id=user.id,
                         sandbox_id=new_sandbox_id,
-                        sandbox_provider=SandboxProviderType.DOCKER.value,
                         session_id=target_message.session_id,
                     )
                     db.add(new_chat)
@@ -613,7 +605,6 @@ class ChatService(BaseDbService[Chat]):
                     if all_attachments:
                         db.add_all(all_attachments)
                         await db.flush()
-                        settings = get_settings()
                         for att in all_attachments:
                             att.file_url = f"{settings.BASE_URL}/api/v1/attachments/{att.id}/preview"
 
@@ -662,8 +653,6 @@ class ChatService(BaseDbService[Chat]):
         self, user_settings: UserSettings, model_id: str
     ) -> None:
         try:
-            if user_settings.sandbox_provider == "e2b":
-                validate_e2b_api_key(user_settings)
             await validate_model_api_keys(user_settings, model_id, self.session_factory)
         except APIKeyValidationError as e:
             raise ChatException(
@@ -705,7 +694,6 @@ class ChatService(BaseDbService[Chat]):
                 "title": chat.title,
                 "sandbox_id": chat.sandbox_id,
                 "session_id": chat.session_id,
-                "sandbox_provider": chat.sandbox_provider,
             },
             permission_mode=permission_mode,
             model_id=model_id,

@@ -10,7 +10,6 @@ from unittest.mock import MagicMock
 
 import pytest
 import pytest_asyncio
-from e2b import AsyncSandbox
 from filelock import FileLock
 from httpx import ASGITransport, AsyncClient
 from redis.asyncio import Redis
@@ -34,7 +33,6 @@ os.environ.setdefault("STORAGE_PATH", "/tmp/test_storage")
 os.environ.setdefault("MAIL_PASSWORD", "test_sendgrid_api_key")
 
 from app.api.endpoints import auth as auth_module
-from app.constants import SANDBOX_AUTO_PAUSE_TIMEOUT
 from app.core.config import get_settings
 from app.core.deps import (
     get_ai_model_service,
@@ -54,9 +52,7 @@ from app.models.db_models.enums import MessageRole, MessageStreamStatus, ModelPr
 from app.services.ai_model import AIModelService
 from app.services.chat import ChatService
 from app.services.claude_agent import ClaudeAgentService
-from app.services.sandbox import SandboxService
-from app.services.sandbox_providers import SandboxProviderType, create_sandbox_provider
-from app.services.sandbox_providers.types import DockerConfig
+from app.services.sandbox import DockerConfig, LocalDockerProvider, SandboxService
 from app.services.storage import StorageService
 from app.services.streaming.context_usage import ContextUsageTracker
 from app.services.streaming.orchestrator import run_chat_stream
@@ -161,7 +157,6 @@ async def sample_user(db_session: AsyncSession) -> User:
     user_settings = UserSettings(
         id=uuid.uuid4(),
         user_id=user.id,
-        e2b_api_key="test_e2b_api_key",
         claude_code_oauth_token="test_claude_code_oauth_token",
     )
     db_session.add(user_settings)
@@ -304,7 +299,6 @@ class TestChatService(ChatService):
             "title": chat.title,
             "sandbox_id": chat.sandbox_id,
             "session_id": chat.session_id,
-            "sandbox_provider": chat.sandbox_provider,
         }
 
         await run_chat_stream(
@@ -332,7 +326,6 @@ class TestChatService(ChatService):
                 chat_id=str(refreshed_chat.id),
                 session_id=refreshed_chat.session_id,
                 sandbox_id=refreshed_chat.sandbox_id,
-                sandbox_provider=refreshed_chat.sandbox_provider or "docker",
                 user_id=str(user.id),
                 model_id=model_id,
             )
@@ -355,55 +348,11 @@ class TestChatService(ChatService):
         return mock_result
 
 
-class SessionSandboxManager:
-    def __init__(self, e2b_api_key: str):
-        self.e2b_api_key = e2b_api_key
-        self.sandbox_id: str | None = None
-        self.sandbox: AsyncSandbox | None = None
-        provider = create_sandbox_provider(
-            provider_type=SandboxProviderType.E2B,
-            api_key=e2b_api_key,
-        )
-        self.service = SandboxService(provider)
-
-    async def get_sandbox(self) -> tuple[str, AsyncSandbox]:
-        if self.sandbox_id:
-            try:
-                self.sandbox = await AsyncSandbox.connect(
-                    sandbox_id=self.sandbox_id,
-                    api_key=self.e2b_api_key,
-                    timeout=SANDBOX_AUTO_PAUSE_TIMEOUT,
-                    auto_pause=True,
-                )
-                return self.sandbox_id, self.sandbox
-            except Exception:
-                pass
-
-        self.sandbox = await AsyncSandbox.create(
-            api_key=self.e2b_api_key,
-            template=settings.E2B_TEMPLATE_ID,
-            timeout=SANDBOX_AUTO_PAUSE_TIMEOUT,
-            auto_pause=True,
-        )
-        self.sandbox_id = self.sandbox.sandbox_id
-        return self.sandbox_id, self.sandbox
-
-    async def cleanup(self) -> None:
-        if self.sandbox:
-            try:
-                await self.sandbox.kill()
-            except Exception:
-                pass
-
-
 class DockerSandboxManager:
     def __init__(self, config: DockerConfig):
         self.config = config
         self.sandbox_id: str | None = None
-        provider = create_sandbox_provider(
-            provider_type=SandboxProviderType.DOCKER,
-            docker_config=config,
-        )
+        provider = LocalDockerProvider(config=config)
         self.service = SandboxService(provider)
 
     async def get_sandbox(self) -> str:
@@ -491,6 +440,7 @@ async def docker_sandbox(
 async def docker_integration_user_fixture(
     db_session: AsyncSession,
     seed_ai_models: None,
+    claude_token: str,
 ) -> User:
     user = User(
         id=uuid.uuid4(),
@@ -505,7 +455,7 @@ async def docker_integration_user_fixture(
     user_settings = UserSettings(
         id=uuid.uuid4(),
         user_id=user.id,
-        sandbox_provider="docker",
+        claude_code_oauth_token=claude_token,
     )
     db_session.add(user_settings)
 
@@ -530,7 +480,6 @@ async def docker_integration_chat_fixture(
         title="Docker Integration Test Chat",
         user_id=user.id,
         sandbox_id=sandbox_id,
-        sandbox_provider="docker",
     )
     db_session.add(chat)
     await db_session.flush()
@@ -548,7 +497,7 @@ async def docker_e2e_app(
 ):
     await docker_sandbox_manager.get_sandbox()
     yield create_e2e_application(
-        db_session, docker_sandbox_manager.service, session_factory, ChatService
+        db_session, docker_sandbox_manager.service, session_factory, TestChatService
     )
 
 
@@ -567,12 +516,23 @@ async def docker_auth_headers(docker_integration_user_fixture: User) -> dict[str
     return {"Authorization": f"Bearer {token}"}
 
 
-@pytest.fixture(scope="session")
-def e2b_api_key() -> str:
-    key = os.environ.get("E2B_API_KEY")
-    if not key:
-        pytest.skip("E2B_API_KEY required")
-    return key
+@pytest_asyncio.fixture
+async def async_client(
+    docker_async_client: AsyncClient,
+) -> AsyncGenerator[AsyncClient, None]:
+    yield docker_async_client
+
+
+@pytest_asyncio.fixture
+async def auth_headers(docker_auth_headers: dict[str, str]) -> dict[str, str]:
+    return docker_auth_headers
+
+
+@pytest_asyncio.fixture
+async def streaming_client(
+    async_client: AsyncClient,
+) -> AsyncGenerator[AsyncClient, None]:
+    yield async_client
 
 
 @pytest.fixture(scope="session")
@@ -608,137 +568,18 @@ async def seed_ai_models(db_session: AsyncSession) -> None:
     await db_session.flush()
 
 
-@pytest_asyncio.fixture(scope="session")
-async def sandbox_manager(
-    e2b_api_key: str,
-) -> AsyncGenerator[SessionSandboxManager, None]:
-    manager = SessionSandboxManager(e2b_api_key)
-    await manager.get_sandbox()
-    try:
-        yield manager
-    finally:
-        await manager.cleanup()
-
-
-@pytest_asyncio.fixture
-async def real_sandbox(
-    sandbox_manager: SessionSandboxManager,
-) -> AsyncGenerator[tuple[SandboxService, str], None]:
-    sandbox_id, _ = await sandbox_manager.get_sandbox()
-    yield sandbox_manager.service, sandbox_id
-
-
 @pytest_asyncio.fixture
 async def integration_user_fixture(
-    db_session: AsyncSession,
-    e2b_api_key: str,
-    claude_token: str,
-    seed_ai_models: None,
+    docker_integration_user_fixture: User,
 ) -> User:
-    user = User(
-        id=uuid.uuid4(),
-        email=f"integration_{uuid.uuid4().hex[:8]}@example.com",
-        username=f"integration_{uuid.uuid4().hex[:8]}",
-        hashed_password=get_password_hash(TEST_PASSWORD),
-        is_active=True,
-        is_verified=True,
-    )
-    db_session.add(user)
-
-    user_settings = UserSettings(
-        id=uuid.uuid4(),
-        user_id=user.id,
-        e2b_api_key=e2b_api_key,
-        claude_code_oauth_token=claude_token,
-        sandbox_provider="e2b",
-    )
-    db_session.add(user_settings)
-
-    await db_session.commit()
-    await db_session.refresh(user)
-    await db_session.refresh(user_settings)
-
-    return user
+    return docker_integration_user_fixture
 
 
 @pytest_asyncio.fixture
 async def integration_chat_fixture(
-    db_session: AsyncSession,
-    integration_user_fixture: User,
-    real_sandbox: tuple[SandboxService, str],
+    docker_integration_chat_fixture: tuple[User, Chat, SandboxService],
 ) -> AsyncGenerator[tuple[User, Chat, SandboxService], None]:
-    service, sandbox_id = real_sandbox
-    user = integration_user_fixture
-    result = await db_session.execute(
-        select(UserSettings).filter(UserSettings.user_id == user.id)
-    )
-    user_settings = result.scalar_one_or_none()
-
-    chat = Chat(
-        id=uuid.uuid4(),
-        title="Integration Test Chat",
-        user_id=user.id,
-        sandbox_id=sandbox_id,
-        sandbox_provider=user_settings.sandbox_provider if user_settings else None,
-    )
-    db_session.add(chat)
-    await db_session.flush()
-    await db_session.refresh(chat)
-
-    yield user, chat, service
-
-
-@pytest_asyncio.fixture
-async def e2e_app(
-    db_session: AsyncSession,
-    sandbox_manager: SessionSandboxManager,
-    session_factory: Callable[[], Any],
-    integration_user_fixture: User,
-):
-    await sandbox_manager.get_sandbox()
-    yield create_e2e_application(
-        db_session, sandbox_manager.service, session_factory, ChatService
-    )
-
-
-@pytest_asyncio.fixture
-async def async_client(e2e_app) -> AsyncGenerator[AsyncClient, None]:
-    async with AsyncClient(
-        transport=ASGITransport(app=e2e_app), base_url="http://test"
-    ) as ac:
-        yield ac
-
-
-@pytest_asyncio.fixture
-async def auth_headers(integration_user_fixture: User) -> dict[str, str]:
-    strategy = get_jwt_strategy()
-    token = await strategy.write_token(integration_user_fixture)
-    return {"Authorization": f"Bearer {token}"}
-
-
-@pytest_asyncio.fixture
-async def e2e_streaming_app(
-    db_session: AsyncSession,
-    sandbox_manager: SessionSandboxManager,
-    session_factory: Callable[[], Any],
-    integration_user_fixture: User,
-):
-    await sandbox_manager.get_sandbox()
-    yield create_e2e_application(
-        db_session, sandbox_manager.service, session_factory, TestChatService
-    )
-
-
-@pytest_asyncio.fixture
-async def streaming_client(
-    e2e_streaming_app,
-) -> AsyncGenerator[AsyncClient, None]:
-    async with AsyncClient(
-        transport=ASGITransport(app=e2e_streaming_app),
-        base_url="http://test",
-        timeout=120.0,
-    ) as ac:
-        yield ac
+    yield docker_integration_chat_fixture
 
 
 @dataclass
@@ -751,127 +592,70 @@ class SandboxTestContext:
     provider: str
 
 
-@pytest_asyncio.fixture(
-    params=[
-        "e2b",
-        pytest.param("docker", marks=pytest.mark.docker),
-    ]
-)
+@pytest_asyncio.fixture
 async def sandbox_test_context(
-    request,
-    e2b_api_key: str,
-    claude_token: str,
     docker_available: bool,
     db_session: AsyncSession,
     session_factory: Callable[[], Any],
     seed_ai_models: None,
 ) -> AsyncGenerator[SandboxTestContext, None]:
-    if request.param == "docker":
-        if not docker_available:
-            pytest.skip("Docker not available")
-        docker_config = DockerConfig(
-            image="claudex-sandbox:latest",
-            network="claudex-sandbox-net",
-            host=None,
-            preview_base_url="http://localhost",
-            user_home="/home/user",
-            openvscode_port=8765,
+    if not docker_available:
+        pytest.skip("Docker not available")
+    docker_config = DockerConfig(
+        image=os.environ.get(
+            "DOCKER_IMAGE", "ghcr.io/mng-dev-ai/claudex-sandbox:latest"
+        ),
+        network="claudex-sandbox-net",
+        host=None,
+        preview_base_url="http://localhost",
+        user_home="/home/user",
+        openvscode_port=8765,
+    )
+    manager = DockerSandboxManager(docker_config)
+    sandbox_id = await manager.get_sandbox()
+
+    user = User(
+        id=uuid.uuid4(),
+        email=f"sandbox_test_docker_{uuid.uuid4().hex[:8]}@example.com",
+        username=f"sandbox_test_docker_{uuid.uuid4().hex[:8]}",
+        hashed_password=get_password_hash(TEST_PASSWORD),
+        is_active=True,
+        is_verified=True,
+    )
+    db_session.add(user)
+
+    user_settings = UserSettings(
+        id=uuid.uuid4(),
+        user_id=user.id,
+    )
+    db_session.add(user_settings)
+    await db_session.commit()
+    await db_session.refresh(user)
+
+    chat = Chat(
+        id=uuid.uuid4(),
+        title="Sandbox Test Chat (Docker)",
+        user_id=user.id,
+        sandbox_id=sandbox_id,
+    )
+    db_session.add(chat)
+    await db_session.flush()
+    await db_session.refresh(chat)
+
+    app = create_e2e_application(
+        db_session, manager.service, session_factory, ChatService
+    )
+    strategy = get_jwt_strategy()
+    token = await strategy.write_token(user)
+    auth_headers = {"Authorization": f"Bearer {token}"}
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
+        yield SandboxTestContext(
+            client, user, chat, manager.service, auth_headers, "docker"
         )
-        manager = DockerSandboxManager(docker_config)
-        sandbox_id = await manager.get_sandbox()
-
-        user = User(
-            id=uuid.uuid4(),
-            email=f"sandbox_test_docker_{uuid.uuid4().hex[:8]}@example.com",
-            username=f"sandbox_test_docker_{uuid.uuid4().hex[:8]}",
-            hashed_password=get_password_hash(TEST_PASSWORD),
-            is_active=True,
-            is_verified=True,
-        )
-        db_session.add(user)
-
-        user_settings = UserSettings(
-            id=uuid.uuid4(),
-            user_id=user.id,
-            sandbox_provider="docker",
-        )
-        db_session.add(user_settings)
-        await db_session.commit()
-        await db_session.refresh(user)
-
-        chat = Chat(
-            id=uuid.uuid4(),
-            title="Sandbox Test Chat (Docker)",
-            user_id=user.id,
-            sandbox_id=sandbox_id,
-        )
-        db_session.add(chat)
-        await db_session.flush()
-        await db_session.refresh(chat)
-
-        app = create_e2e_application(
-            db_session, manager.service, session_factory, ChatService
-        )
-        strategy = get_jwt_strategy()
-        token = await strategy.write_token(user)
-        auth_headers = {"Authorization": f"Bearer {token}"}
-
-        async with AsyncClient(
-            transport=ASGITransport(app=app), base_url="http://test"
-        ) as client:
-            yield SandboxTestContext(
-                client, user, chat, manager.service, auth_headers, "docker"
-            )
-        await manager.cleanup()
-    else:
-        manager = SessionSandboxManager(e2b_api_key)
-        sandbox_id, _ = await manager.get_sandbox()
-
-        user = User(
-            id=uuid.uuid4(),
-            email=f"sandbox_test_e2b_{uuid.uuid4().hex[:8]}@example.com",
-            username=f"sandbox_test_e2b_{uuid.uuid4().hex[:8]}",
-            hashed_password=get_password_hash(TEST_PASSWORD),
-            is_active=True,
-            is_verified=True,
-        )
-        db_session.add(user)
-
-        user_settings = UserSettings(
-            id=uuid.uuid4(),
-            user_id=user.id,
-            e2b_api_key=e2b_api_key,
-            claude_code_oauth_token=claude_token,
-            sandbox_provider="e2b",
-        )
-        db_session.add(user_settings)
-        await db_session.commit()
-        await db_session.refresh(user)
-
-        chat = Chat(
-            id=uuid.uuid4(),
-            title="Sandbox Test Chat (E2B)",
-            user_id=user.id,
-            sandbox_id=sandbox_id,
-        )
-        db_session.add(chat)
-        await db_session.flush()
-        await db_session.refresh(chat)
-
-        app = create_e2e_application(
-            db_session, manager.service, session_factory, ChatService
-        )
-        strategy = get_jwt_strategy()
-        token = await strategy.write_token(user)
-        auth_headers = {"Authorization": f"Bearer {token}"}
-
-        async with AsyncClient(
-            transport=ASGITransport(app=app), base_url="http://test"
-        ) as client:
-            yield SandboxTestContext(
-                client, user, chat, manager.service, auth_headers, "e2b"
-            )
-        await manager.cleanup()
+    await manager.cleanup()
 
 
 @pytest_asyncio.fixture

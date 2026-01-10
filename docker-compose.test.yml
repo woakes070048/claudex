@@ -50,7 +50,6 @@ services:
       - PYTHONDONTWRITEBYTECODE=1
       - PYTHONUNBUFFERED=1
       - CLAUDE_CODE_OAUTH_TOKEN=${CLAUDE_CODE_OAUTH_TOKEN:-}
-      - E2B_API_KEY=${E2B_API_KEY:-}
       - DOCKER_HOST=unix:///var/run/docker.sock
     volumes:
       - ./backend:/app

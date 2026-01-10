@@ -1,12 +1,10 @@
 import { type ReactNode } from 'react';
 import type { FileStructure, CustomAgent, CustomCommand, CustomPrompt } from '@/types';
-import type { SandboxProviderType } from '@/config/constants';
 import { ChatContext } from './ChatContextDefinition';
 
 interface ChatProviderProps {
   chatId?: string;
   sandboxId?: string;
-  sandboxProvider?: SandboxProviderType;
   fileStructure?: FileStructure[];
   customAgents?: CustomAgent[];
   customSlashCommands?: CustomCommand[];
@@ -17,7 +15,6 @@ interface ChatProviderProps {
 export function ChatProvider({
   chatId,
   sandboxId,
-  sandboxProvider,
   fileStructure = [],
   customAgents = [],
   customSlashCommands = [],
@@ -29,7 +26,6 @@ export function ChatProvider({
       value={{
         chatId,
         sandboxId,
-        sandboxProvider,
         fileStructure,
         customAgents,
         customSlashCommands,

@@ -50,7 +50,6 @@ async def execute_task_in_sandbox(
         "title": chat.title,
         "sandbox_id": chat.sandbox_id,
         "session_id": None,
-        "sandbox_provider": chat.sandbox_provider,
     }
 
     system_prompt = build_system_prompt_for_chat(chat.sandbox_id, user_settings)

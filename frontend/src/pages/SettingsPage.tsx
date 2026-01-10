@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Settings as SettingsIcon, AlertCircle, FileText, FileArchive } from 'lucide-react';
 import { cn } from '@/utils/cn';
 import { useNavigate } from 'react-router-dom';
-import type { UserSettings, UserSettingsUpdate, SandboxProvider } from '@/types';
+import type { UserSettings, UserSettingsUpdate } from '@/types';
 import {
   useSettingsQuery,
   useUpdateSettingsMutation,
@@ -71,7 +71,6 @@ const createFallbackSettings = (): UserSettings => ({
   id: '',
   user_id: '',
   github_personal_access_token: null,
-  e2b_api_key: null,
   claude_code_oauth_token: null,
   z_ai_api_key: null,
   openrouter_api_key: null,
@@ -84,7 +83,6 @@ const createFallbackSettings = (): UserSettings => ({
   custom_slash_commands: null,
   custom_prompts: null,
   notification_sound_enabled: true,
-  sandbox_provider: 'docker',
   auto_compact_disabled: false,
   created_at: new Date().toISOString(),
   updated_at: new Date().toISOString(),
@@ -92,7 +90,6 @@ const createFallbackSettings = (): UserSettings => ({
 
 const TAB_FIELDS: Record<TabKey, (keyof UserSettings)[]> = {
   general: [
-    'e2b_api_key',
     'github_personal_access_token',
     'claude_code_oauth_token',
     'z_ai_api_key',
@@ -184,7 +181,6 @@ const SettingsPage: React.FC = () => {
       const payload: UserSettingsUpdate = {};
       const fields: (keyof UserSettingsUpdate)[] = [
         'github_personal_access_token',
-        'e2b_api_key',
         'claude_code_oauth_token',
         'z_ai_api_key',
         'openrouter_api_key',
@@ -197,7 +193,6 @@ const SettingsPage: React.FC = () => {
         'custom_slash_commands',
         'custom_prompts',
         'notification_sound_enabled',
-        'sandbox_provider',
         'auto_compact_disabled',
       ];
 
@@ -319,7 +314,6 @@ const SettingsPage: React.FC = () => {
   const taskManagement = useTaskManagement(defaultModelId);
 
   const [revealedFields, setRevealedFields] = useState<Record<ApiFieldKey, boolean>>({
-    e2b_api_key: false,
     github_personal_access_token: false,
     claude_code_oauth_token: false,
     z_ai_api_key: false,
@@ -391,10 +385,6 @@ const SettingsPage: React.FC = () => {
 
   const handleNotificationSoundChange = (enabled: boolean) => {
     persistSettings((prev) => ({ ...prev, notification_sound_enabled: enabled }));
-  };
-
-  const handleSandboxProviderChange = (provider: SandboxProvider | null) => {
-    persistSettings((prev) => ({ ...prev, sandbox_provider: provider }));
   };
 
   const handleAutoCompactDisabledChange = (disabled: boolean) => {
@@ -555,7 +545,6 @@ const SettingsPage: React.FC = () => {
                     onToggleVisibility={toggleFieldVisibility}
                     onDeleteAllChats={handleDeleteAllChats}
                     onNotificationSoundChange={handleNotificationSoundChange}
-                    onSandboxProviderChange={handleSandboxProviderChange}
                     onAutoCompactDisabledChange={handleAutoCompactDisabledChange}
                     onCodexAuthChange={handleCodexAuthChange}
                   />

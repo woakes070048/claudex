@@ -1,5 +1,4 @@
 export type ApiFieldKey =
-  | 'e2b_api_key'
   | 'github_personal_access_token'
   | 'claude_code_oauth_token'
   | 'z_ai_api_key'

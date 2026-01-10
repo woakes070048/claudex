@@ -122,11 +122,7 @@ class Settings(BaseSettings):
     # Model context window (tokens)
     CONTEXT_WINDOW_TOKENS: int = 200_000
 
-    # E2B Sandbox configuration
-    E2B_TEMPLATE_ID: str = "hg02z8aexvw928qvuq87"
-
     # Docker Sandbox configuration
-    SANDBOX_PROVIDER: str = "e2b"  # "e2b" or "docker"
     DOCKER_IMAGE: str = "ghcr.io/mng-dev-ai/claudex-sandbox:latest"
     DOCKER_NETWORK: str = "claudex-sandbox-net"
     DOCKER_HOST: str | None = None

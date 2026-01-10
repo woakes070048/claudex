@@ -6,7 +6,6 @@ from fastapi import UploadFile
 from pydantic import BaseModel, Field
 
 from app.models.db_models import AttachmentType, MessageRole
-from app.services.sandbox_providers import SandboxProviderType
 from app.models.schemas.pagination import CursorPaginatedResponse, PaginatedResponse
 
 
@@ -74,7 +73,6 @@ class Chat(ChatBase):
     created_at: datetime
     updated_at: datetime
     sandbox_id: str | None = None
-    sandbox_provider: SandboxProviderType | None = None
     context_token_usage: int | None = None
     pinned_at: datetime | None = None
 

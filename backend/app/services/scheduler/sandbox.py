@@ -76,18 +76,12 @@ async def validate_user_api_keys(
     session_factory: Any,
 ) -> tuple[Any, dict[str, Any] | None]:
     from app.services.user import UserService
-    from app.utils.validators import (
-        APIKeyValidationError,
-        validate_e2b_api_key,
-        validate_model_api_keys,
-    )
+    from app.utils.validators import APIKeyValidationError, validate_model_api_keys
 
     user_service = UserService()
 
     try:
         user_settings = await user_service.get_user_settings(user.id, db=db)
-        if user_settings.sandbox_provider == "e2b":
-            validate_e2b_api_key(user_settings)
         await validate_model_api_keys(user_settings, model_id, session_factory)
         return user_settings, None
     except (ValueError, APIKeyValidationError) as e:
@@ -112,30 +106,18 @@ async def create_and_initialize_sandbox(
     user: User,
     session_factory: Any,
 ) -> tuple[SandboxService, str]:
-    from app.services.sandbox import SandboxService
-    from app.services.sandbox_providers import (
-        DockerConfig,
-        SandboxProviderType,
-        create_sandbox_provider,
+    from app.services.sandbox import DockerConfig, LocalDockerProvider, SandboxService
+
+    docker_config = DockerConfig(
+        image=settings.DOCKER_IMAGE,
+        network=settings.DOCKER_NETWORK,
+        host=settings.DOCKER_HOST,
+        preview_base_url=settings.DOCKER_PREVIEW_BASE_URL,
+        sandbox_domain=settings.DOCKER_SANDBOX_DOMAIN,
+        traefik_network=settings.DOCKER_TRAEFIK_NETWORK,
     )
 
-    provider_type = SandboxProviderType(user_settings.sandbox_provider)
-
-    docker_config = None
-    if provider_type == SandboxProviderType.DOCKER:
-        docker_config = DockerConfig(
-            image=settings.DOCKER_IMAGE,
-            network=settings.DOCKER_NETWORK,
-            host=settings.DOCKER_HOST,
-            preview_base_url=settings.DOCKER_PREVIEW_BASE_URL,
-        )
-
-    provider = create_sandbox_provider(
-        provider_type=provider_type,
-        api_key=user_settings.e2b_api_key,
-        docker_config=docker_config,
-    )
-
+    provider = LocalDockerProvider(config=docker_config)
     sandbox_service = SandboxService(provider, session_factory=session_factory)
     sandbox_id = await sandbox_service.create_sandbox()
 

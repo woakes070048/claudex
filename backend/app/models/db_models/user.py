@@ -67,7 +67,6 @@ class UserSettings(Base):
     github_personal_access_token: Mapped[str | None] = mapped_column(
         EncryptedString, nullable=True
     )
-    e2b_api_key: Mapped[str | None] = mapped_column(EncryptedString, nullable=True)
     claude_code_oauth_token: Mapped[str | None] = mapped_column(
         EncryptedString, nullable=True
     )
@@ -95,9 +94,6 @@ class UserSettings(Base):
     )
     notification_sound_enabled: Mapped[bool] = mapped_column(
         Boolean, default=True, server_default="true", nullable=False
-    )
-    sandbox_provider: Mapped[str] = mapped_column(
-        String(20), nullable=False, default="docker", server_default="docker"
     )
     auto_compact_disabled: Mapped[bool] = mapped_column(
         Boolean, default=False, server_default="false", nullable=False

@@ -741,7 +741,6 @@ class TestForkChat:
         assert data["messages_copied"] == 3
         assert data["chat"]["title"].startswith("Fork of")
         assert data["chat"]["sandbox_id"] != chat.sandbox_id
-        assert data["chat"]["sandbox_provider"] == "docker"
         assert data["chat"]["user_id"] == str(user.id)
 
         new_sandbox_id = data["chat"]["sandbox_id"]
@@ -803,7 +802,6 @@ class TestForkChat:
             title="Other chat",
             user_id=docker_integration_user_fixture.id,
             sandbox_id="other-sandbox",
-            sandbox_provider="docker",
         )
         db_session.add(other_chat)
         await db_session.flush()
@@ -841,7 +839,6 @@ class TestForkChat:
             title="Another user's chat",
             user_id=another_user.id,
             sandbox_id="another-sandbox",
-            sandbox_provider="docker",
         )
         db_session.add(another_users_chat)
         await db_session.flush()
@@ -876,32 +873,18 @@ class TestForkChat:
         )
         assert response.status_code == 401
 
-    async def test_fork_chat_validation_errors(
+    async def test_fork_chat_no_sandbox_fails(
         self,
         async_client: AsyncClient,
-        docker_async_client: AsyncClient,
-        integration_chat_fixture: tuple[User, Chat, SandboxService],
-        docker_integration_user_fixture: User,
+        integration_user_fixture: User,
         auth_headers: dict[str, str],
-        docker_auth_headers: dict[str, str],
         db_session: AsyncSession,
     ) -> None:
-        _, e2b_chat, _ = integration_chat_fixture
-        e2b_message = Message(
-            id=uuid.uuid4(),
-            chat_id=e2b_chat.id,
-            content="E2B message",
-            role=MessageRole.USER,
-            stream_status=MessageStreamStatus.COMPLETED,
-        )
-        db_session.add(e2b_message)
-
         no_sandbox_chat = Chat(
             id=uuid.uuid4(),
             title="Chat without sandbox",
-            user_id=docker_integration_user_fixture.id,
+            user_id=integration_user_fixture.id,
             sandbox_id=None,
-            sandbox_provider="docker",
         )
         db_session.add(no_sandbox_chat)
         await db_session.flush()
@@ -917,15 +900,8 @@ class TestForkChat:
         await db_session.flush()
 
         response = await async_client.post(
-            f"/api/v1/chat/chats/{e2b_chat.id}/fork",
-            json={"message_id": str(e2b_message.id)},
-            headers=auth_headers,
-        )
-        assert response.status_code == 400
-
-        response = await docker_async_client.post(
             f"/api/v1/chat/chats/{no_sandbox_chat.id}/fork",
             json={"message_id": str(no_sandbox_message.id)},
-            headers=docker_auth_headers,
+            headers=auth_headers,
         )
         assert response.status_code == 400

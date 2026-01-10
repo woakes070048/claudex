@@ -19,7 +19,6 @@ def hydrate_chat(chat_data: dict[str, Any]) -> Chat:
         title=chat_data["title"],
         sandbox_id=chat_data.get("sandbox_id"),
         session_id=chat_data.get("session_id"),
-        sandbox_provider=chat_data.get("sandbox_provider"),
     )
 
 
@@ -31,7 +30,6 @@ class SessionUpdateCallback:
         session_factory: Any,
         session_container: dict[str, Any],
         sandbox_id: str,
-        sandbox_provider: str,
         user_id: str,
         model_id: str,
         context_usage_trigger: Callable[..., Any] | None = None,
@@ -41,7 +39,6 @@ class SessionUpdateCallback:
         self.session_factory = session_factory
         self.session_container = session_container
         self.sandbox_id = sandbox_id
-        self.sandbox_provider = sandbox_provider
         self.user_id = user_id
         self.model_id = model_id
         self._context_usage_trigger = context_usage_trigger
@@ -55,7 +52,6 @@ class SessionUpdateCallback:
                 chat_id=self.chat_id,
                 session_id=new_session_id,
                 sandbox_id=self.sandbox_id,
-                sandbox_provider=self.sandbox_provider,
                 user_id=self.user_id,
                 model_id=self.model_id,
             )

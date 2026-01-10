@@ -2,7 +2,6 @@ import type { CustomAgent } from '@/types/user.types';
 
 export const SandboxProvider = {
   DOCKER: 'docker',
-  E2B: 'e2b',
 } as const;
 
 export type SandboxProviderType = (typeof SandboxProvider)[keyof typeof SandboxProvider];

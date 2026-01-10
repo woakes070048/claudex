@@ -1,6 +1,5 @@
 import type { ToolEventPayload } from './tools.types';
 import type { LineReview } from './review.types';
-import type { SandboxProviderType } from '@/config/constants';
 
 export interface MessageAttachment {
   id: string;
@@ -51,7 +50,6 @@ export interface Chat {
   created_at: string;
   updated_at: string;
   sandbox_id?: string;
-  sandbox_provider?: SandboxProviderType;
   context_token_usage?: number;
   pinned_at?: string | null;
 }

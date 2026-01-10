@@ -85,7 +85,6 @@ class InstalledPluginSchema(BaseModel):
 
 class UserSettingsBase(BaseModel):
     github_personal_access_token: str | None = None
-    e2b_api_key: str | None = None
     claude_code_oauth_token: str | None = None
     z_ai_api_key: str | None = None
     openrouter_api_key: str | None = None
@@ -99,7 +98,6 @@ class UserSettingsBase(BaseModel):
     custom_prompts: list[CustomPrompt] | None = None
     installed_plugins: list[InstalledPluginSchema] | None = None
     notification_sound_enabled: bool = True
-    sandbox_provider: Literal["e2b", "docker"] = "docker"
     auto_compact_disabled: bool = False
 
     @field_validator(

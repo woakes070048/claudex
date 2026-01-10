@@ -11,7 +11,7 @@ Your own Claude Code UI. Open source, self-hosted, runs entirely on your machine
 
 ## Why Claudex?
 
-- **Local or cloud sandbox** - Run locally with Docker or in the cloud with E2B.
+- **Local sandbox** - Run locally with Docker, fully isolated code execution.
 - **Use your own plans** - Claude Max, Z.AI Coding, or OpenRouter.
 - **Full IDE experience** - VS Code in browser, terminal, file explorer.
 - **Extensible** - Skills, agents, slash commands, MCP servers.
@@ -35,9 +35,7 @@ Open http://localhost:3000
 ## Features
 
 ### Sandboxed Code Execution
-Run AI agents in isolated environments. Choose between:
-- **Docker** - Local execution, no external dependencies
-- **E2B** - Cloud execution via [E2B](https://e2b.dev)
+Run AI agents in isolated Docker containers. Fully local, no external dependencies.
 
 ### Full Development Environment
 - VS Code editor in the browser
@@ -88,35 +86,11 @@ Configure in the Settings UI after login:
 
 | Setting | Description |
 |---------|-------------|
-| Sandbox Provider | Docker (local) or E2B (cloud) |
-| E2B API Key | Only needed if using E2B sandbox |
 | Claude OAuth Token | For Max plan |
 | Z.AI API Key | For Coding plan |
 | OpenRouter API Key | For OpenRouter models |
 
 You only need one AI provider key.
-
-### Local Development with Permissions
-
-**Docker Sandbox:**
-No tunnel needed. Docker containers connect via `host.docker.internal`.
-
-**E2B Sandbox:**
-E2B sandboxes run remotely and cannot reach `localhost`. Expose your backend via a tunnel:
-
-```bash
-# Using ngrok
-ngrok http 8080
-
-# Or Cloudflare Tunnel
-cloudflared tunnel --url http://localhost:8080
-```
-
-Then set `BASE_URL` to your tunnel URL:
-
-```bash
-BASE_URL=https://your-tunnel-url.ngrok.io docker compose up -d
-```
 
 ## Architecture
 
@@ -129,8 +103,8 @@ BASE_URL=https://your-tunnel-url.ngrok.io docker compose up -d
                     ┌────────────┼────────────┐
                     ▼            ▼            ▼
             ┌───────────┐ ┌───────────┐ ┌─────────────────┐
-            │   Redis   │ │  Celery   │ │     Sandbox     │
-            │  Pub/Sub  │ │  Workers  │ │  Docker or E2B  │
+            │   Redis   │ │  Celery   │ │ Docker Sandbox  │
+            │  Pub/Sub  │ │  Workers  │ │                 │
             └───────────┘ └───────────┘ └─────────────────┘
 ```
 

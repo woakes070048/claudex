@@ -685,12 +685,8 @@ async def respond_to_permission(
 
             if not success:
                 # When a permission request is not found (expired or never existed), we publish
-                # a "denied" message to the Redis pub/sub channel. This is necessary because
-                # E2B's permission_server may still be blocked waiting on get_permission_response,
-                # which subscribes to this channel. Without this publish, E2B would continue
-                # waiting until its timeout (~5 min), leaving the tool stuck in "Waiting for
-                # user response" state. By publishing the denied message, we wake up E2B's
-                # waiting call immediately, allowing it to fail the tool right away.
+                # a "denied" message to the Redis pub/sub channel. This wakes up any waiting
+                # permission handler immediately, allowing it to fail the tool right away.
                 try:
                     expired_response = json.dumps(
                         {

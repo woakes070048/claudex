@@ -2,7 +2,6 @@ from datetime import datetime
 from typing import TYPE_CHECKING
 
 from app.constants import DOCKER_AVAILABLE_PORTS
-from app.core.config import get_settings
 
 if TYPE_CHECKING:
     from app.models.db_models import UserSettings
@@ -36,11 +35,9 @@ def _get_env_vars_section(env_vars_formatted: str | None) -> str:
 def _get_runtime_context_section(
     sandbox_id: str,
     current_date: str,
-    sandbox_provider: str,
 ) -> str:
-    if sandbox_provider == "docker":
-        ports_str = ", ".join(str(p) for p in DOCKER_AVAILABLE_PORTS)
-        return f"""<runtime_context>
+    ports_str = ", ".join(str(p) for p in DOCKER_AVAILABLE_PORTS)
+    return f"""<runtime_context>
 - Workspace: /home/user
 - Sandbox: {sandbox_id}
 - Date: {current_date}
@@ -49,25 +46,15 @@ def _get_runtime_context_section(
 - IMPORTANT: Only use ports from the available ports list above. Other ports will not be accessible.
 - IMPORTANT: Do NOT tell users specific localhost URLs. The actual port is dynamically mapped. Direct users to check the Preview panel for the correct URL.
 </runtime_context>"""
-    return f"""<runtime_context>
-- Workspace: /home/user
-- Sandbox: {sandbox_id}
-- Date: {current_date}
-- Sandbox Provider: E2B (cloud)
-- Public URL pattern: https://<port>-{sandbox_id}.e2b.dev
-</runtime_context>"""
 
 
 def get_system_prompt(
     sandbox_id: str,
-    sandbox_provider: str = "e2b",
     github_token_configured: bool = False,
     env_vars_formatted: str | None = None,
 ) -> str:
     current_date = datetime.utcnow().strftime("%Y-%m-%d")
-    runtime_section = _get_runtime_context_section(
-        sandbox_id, current_date, sandbox_provider
-    )
+    runtime_section = _get_runtime_context_section(sandbox_id, current_date)
     github_section = _get_github_section(github_token_configured)
     env_section = _get_env_vars_section(env_vars_formatted)
 
@@ -83,14 +70,11 @@ def get_system_prompt(
 def build_custom_system_prompt(
     custom_prompt_content: str,
     sandbox_id: str,
-    sandbox_provider: str = "e2b",
     github_token_configured: bool = False,
     env_vars_formatted: str | None = None,
 ) -> str:
     current_date = datetime.utcnow().strftime("%Y-%m-%d")
-    runtime_section = _get_runtime_context_section(
-        sandbox_id, current_date, sandbox_provider
-    )
+    runtime_section = _get_runtime_context_section(sandbox_id, current_date)
     github_section = _get_github_section(github_token_configured)
     env_section = _get_env_vars_section(env_vars_formatted)
 
@@ -118,10 +102,6 @@ def build_system_prompt_for_chat(
         env_vars_formatted = "\n".join(
             f"- {env_var['key']}" for env_var in user_settings.custom_env_vars
         )
-    config = get_settings()
-    sandbox_provider = (
-        user_settings.sandbox_provider if user_settings else None
-    ) or config.SANDBOX_PROVIDER
 
     if selected_prompt_name and user_settings and user_settings.custom_prompts:
         custom_prompt = next(
@@ -136,14 +116,12 @@ def build_system_prompt_for_chat(
             return build_custom_system_prompt(
                 custom_prompt["content"],
                 sandbox_id,
-                sandbox_provider,
                 github_token_configured,
                 env_vars_formatted,
             )
 
     return get_system_prompt(
         sandbox_id,
-        sandbox_provider,
         github_token_configured,
         env_vars_formatted,
     )

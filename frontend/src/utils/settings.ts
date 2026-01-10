@@ -87,17 +87,6 @@ export const validateMcpForm = (
 
 export const getGeneralSecretFields = (): GeneralSecretFieldConfig[] => [
   {
-    key: 'e2b_api_key',
-    label: 'E2B API Key',
-    description: 'Required for code execution sandbox environments',
-    placeholder: 'e2b_xxxxxxxxxxxxxxxxxxxx',
-    helperText: {
-      prefix: 'Get your API key from',
-      anchorText: 'E2B Dashboard',
-      href: 'https://e2b.dev/docs/api-key',
-    },
-  },
-  {
     key: 'github_personal_access_token',
     label: 'GitHub Personal Access Token',
     description: 'Required for GitHub integrations and repository access',

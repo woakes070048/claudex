@@ -71,7 +71,7 @@ docker compose logs -f backend    # View logs
 
 - Backend uses async SQLAlchemy with separate session factories for API (`SessionLocal`) and Celery (`CelerySessionLocal`)
 - Real-time chat via SSE streaming with Redis pub/sub for cross-worker communication
-- E2B SDK provides isolated sandbox environments for code execution
+- Docker containers provide isolated sandbox environments for code execution
 - Frontend uses Zustand for client state, React Query for server state
 - All API responses use Pydantic schemas for validation
 
@@ -91,4 +91,4 @@ Migrations in `/backend/migrations/` managed by Alembic.
 
 ## Environment
 
-Key env vars in `.env`: `DATABASE_URL`, `REDIS_URL`, `SECRET_KEY`, `ANTHROPIC_API_KEY`, `E2B_API_KEY`, `ENVIRONMENT` (development/production)
+Key env vars in `.env`: `DATABASE_URL`, `REDIS_URL`, `SECRET_KEY`, `ANTHROPIC_API_KEY`, `ENVIRONMENT` (development/production)

@@ -53,7 +53,6 @@ def fetch_context_token_usage(
     chat_id: str,
     session_id: str,
     sandbox_id: str,
-    sandbox_provider: str,
     user_id: str,
     model_id: str,
 ) -> None:
@@ -61,7 +60,6 @@ def fetch_context_token_usage(
         chat_id=chat_id,
         session_id=session_id,
         sandbox_id=sandbox_id,
-        sandbox_provider=sandbox_provider,
         user_id=user_id,
         model_id=model_id,
     )

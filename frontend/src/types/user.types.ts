@@ -74,13 +74,10 @@ export interface CustomPrompt {
   content: string;
 }
 
-export type SandboxProvider = 'e2b' | 'docker';
-
 export interface UserSettings {
   id: string;
   user_id: string;
   github_personal_access_token: string | null;
-  e2b_api_key: string | null;
   claude_code_oauth_token: string | null;
   z_ai_api_key: string | null;
   openrouter_api_key: string | null;
@@ -93,7 +90,6 @@ export interface UserSettings {
   custom_slash_commands: CustomCommand[] | null;
   custom_prompts: CustomPrompt[] | null;
   notification_sound_enabled?: boolean;
-  sandbox_provider: SandboxProvider;
   auto_compact_disabled?: boolean;
   created_at: string;
   updated_at: string;
