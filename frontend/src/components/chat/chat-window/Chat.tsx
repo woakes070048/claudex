@@ -290,6 +290,13 @@ export const Chat = memo(function Chat({
 
   const lastBotMessageIndex = useMemo(() => findLastBotMessageIndex(messages), [messages]);
 
+  const handleSuggestionSelect = useCallback(
+    (suggestion: string) => {
+      setInputMessage(suggestion);
+    },
+    [setInputMessage],
+  );
+
   return (
     <ChatProvider
       chatId={chatId}
@@ -337,6 +344,8 @@ export const Chat = memo(function Chat({
                     modelId={msg.model_id}
                     isLastBotMessageWithCommit={isLastBotMessage}
                     onRestoreSuccess={onRestoreSuccess}
+                    isLastBotMessage={isLastBotMessage && !messageIsStreaming}
+                    onSuggestionSelect={isLastBotMessage ? handleSuggestionSelect : undefined}
                   />
                 );
               })}

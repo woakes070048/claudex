@@ -455,6 +455,46 @@ class TestChatCompletion:
         usage_data = usage_response.json()
         assert usage_data["tokens_used"] > 0
 
+    @pytest.mark.timeout(STREAMING_TEST_TIMEOUT)
+    async def test_chat_completion_includes_prompt_suggestions(
+        self,
+        streaming_client: AsyncClient,
+        integration_chat_fixture: tuple[User, Chat, SandboxService],
+        auth_headers: dict[str, str],
+    ) -> None:
+        _, chat, _ = integration_chat_fixture
+        test_prompt = "What is 2 + 2?"
+
+        completion_response = await streaming_client.post(
+            "/api/v1/chat/chat",
+            data={
+                "prompt": test_prompt,
+                "chat_id": str(chat.id),
+                "model_id": "claude-haiku-4-5",
+                "permission_mode": "auto",
+            },
+            headers=auth_headers,
+        )
+
+        assert completion_response.status_code == 200
+
+        stream_response = await streaming_client.get(
+            f"/api/v1/chat/chats/{chat.id}/stream",
+            headers=auth_headers,
+        )
+
+        assert stream_response.status_code == 200
+
+        events = []
+        for line in stream_response.text.split("\n"):
+            if line.startswith("data:"):
+                data = line[5:].strip()
+                if data:
+                    events.append(data)
+
+        has_suggestions_event = any("prompt_suggestions" in str(e) for e in events)
+        assert has_suggestions_event, "Expected prompt_suggestions event in stream"
+
     async def test_chat_completion_requires_chat_id(
         self,
         streaming_client: AsyncClient,

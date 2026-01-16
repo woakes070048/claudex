@@ -29,6 +29,8 @@ export interface MessageProps {
   modelId?: string;
   isLastBotMessageWithCommit?: boolean;
   onRestoreSuccess?: () => void;
+  isLastBotMessage?: boolean;
+  onSuggestionSelect?: (suggestion: string) => void;
 }
 
 export const Message = memo(function Message({
@@ -44,6 +46,8 @@ export const Message = memo(function Message({
   modelId,
   isLastBotMessageWithCommit,
   onRestoreSuccess,
+  isLastBotMessage,
+  onSuggestionSelect,
 }: MessageProps) {
   const { chatId, sandboxId } = useChatContext();
   const { data: models = [] } = useModelsQuery();
@@ -122,6 +126,8 @@ export const Message = memo(function Message({
                 attachments={attachments}
                 isStreaming={isThisMessageStreaming}
                 chatId={chatId}
+                isLastBotMessage={isLastBotMessage}
+                onSuggestionSelect={onSuggestionSelect}
               />
             </div>
           ) : (

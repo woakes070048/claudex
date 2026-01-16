@@ -41,7 +41,8 @@ export type AssistantStreamEvent =
       request_id: string;
       tool_name: string;
       tool_input: Record<string, unknown>;
-    };
+    }
+  | { type: 'prompt_suggestions'; suggestions: string[] };
 
 export interface Chat {
   id: string;

@@ -27,7 +27,18 @@ export interface ReviewSegment {
   eventIndex: number;
 }
 
-export type MessageSegment = TextSegment | ThinkingSegment | ToolSegment | ReviewSegment;
+export interface SuggestionsSegment {
+  kind: 'suggestions';
+  id: string;
+  suggestions: string[];
+}
+
+export type MessageSegment =
+  | TextSegment
+  | ThinkingSegment
+  | ToolSegment
+  | ReviewSegment
+  | SuggestionsSegment;
 
 const statusMap: Record<'tool_started' | 'tool_completed' | 'tool_failed', ToolEventStatus> = {
   tool_started: 'started',
@@ -316,6 +327,7 @@ export const buildSegments = (events: AssistantStreamEvent[]): MessageSegment[] 
   let textSegmentCount = 0;
   let thinkingSegmentCount = 0;
   let reviewSegmentCount = 0;
+  let suggestionsSegmentCount = 0;
 
   const flushText = () => {
     if (!pendingText) return;
@@ -359,6 +371,15 @@ export const buildSegments = (events: AssistantStreamEvent[]): MessageSegment[] 
           eventIndex: index,
         });
         reviewSegmentCount++;
+        break;
+      case 'prompt_suggestions':
+        flushText();
+        segments.push({
+          kind: 'suggestions',
+          id: `suggestions-${suggestionsSegmentCount}`,
+          suggestions: event.suggestions,
+        });
+        suggestionsSegmentCount++;
         break;
       case 'tool_started':
       case 'tool_completed':

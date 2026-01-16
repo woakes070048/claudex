@@ -15,6 +15,7 @@ StreamEventType = Literal[
     "user_text",
     "system",
     "permission_request",
+    "prompt_suggestions",
 ]
 
 
@@ -38,6 +39,7 @@ class StreamEvent(TypedDict, total=False):
     request_id: str
     tool_name: str
     tool_input: JSONDict
+    suggestions: list[str]
 
 
 @dataclass

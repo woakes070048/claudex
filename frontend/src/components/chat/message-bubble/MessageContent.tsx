@@ -9,10 +9,20 @@ interface MessageContentProps {
   attachments?: MessageAttachment[];
   isStreaming: boolean;
   chatId?: string;
+  isLastBotMessage?: boolean;
+  onSuggestionSelect?: (suggestion: string) => void;
 }
 
 export const MessageContent = memo(
-  ({ content, isBot, attachments, isStreaming, chatId }: MessageContentProps) => {
+  ({
+    content,
+    isBot,
+    attachments,
+    isStreaming,
+    chatId,
+    isLastBotMessage,
+    onSuggestionSelect,
+  }: MessageContentProps) => {
     if (!isBot) {
       return (
         <div className="space-y-4">
@@ -24,7 +34,13 @@ export const MessageContent = memo(
 
     return (
       <div className="space-y-4">
-        <MessageRenderer content={content} isStreaming={isStreaming} chatId={chatId} />
+        <MessageRenderer
+          content={content}
+          isStreaming={isStreaming}
+          chatId={chatId}
+          isLastBotMessage={isLastBotMessage}
+          onSuggestionSelect={onSuggestionSelect}
+        />
 
         <MessageAttachments attachments={attachments} className="mt-3" />
       </div>

@@ -1,4 +1,6 @@
+import json
 import logging
+import re
 from collections.abc import Callable, Iterable
 from typing import Any, TypeAlias
 
@@ -17,6 +19,11 @@ from app.services.streaming.events import StreamEvent, StreamEventType
 
 
 logger = logging.getLogger(__name__)
+
+PROMPT_SUGGESTIONS_PATTERN = re.compile(
+    r"<prompt_suggestions>\s*(.*?)\s*</prompt_suggestions>",
+    re.DOTALL,
+)
 
 MessageType: TypeAlias = AssistantMessage | UserMessage | ResultMessage | SystemMessage
 
@@ -107,9 +114,39 @@ class StreamProcessor:
     def _emit_text_block(
         self, text: str | None, *, event_type: StreamEventType
     ) -> Iterable[StreamEvent]:
+        if not text:
+            return
+
+        suggestions: list[str] | None = None
+
+        if event_type == "assistant_text":
+            match = PROMPT_SUGGESTIONS_PATTERN.search(text)
+            if match:
+                try:
+                    parsed = json.loads(match.group(1))
+                    if isinstance(parsed, list):
+                        suggestions = [
+                            s.strip()
+                            for s in parsed
+                            if isinstance(s, str) and s.strip()
+                        ]
+                        if suggestions:
+                            text = PROMPT_SUGGESTIONS_PATTERN.sub("", text).strip()
+                    else:
+                        logger.warning("Prompt suggestions is not a list")
+                except json.JSONDecodeError:
+                    logger.warning("Failed to parse prompt suggestions JSON")
+
         if text:
             event: StreamEvent = {"type": event_type, "text": text}
             yield event
+
+        if suggestions:
+            suggestions_event: StreamEvent = {
+                "type": "prompt_suggestions",
+                "suggestions": suggestions,
+            }
+            yield suggestions_event
 
     def _emit_thinking_block(self, thinking: str | None) -> Iterable[StreamEvent]:
         if thinking:

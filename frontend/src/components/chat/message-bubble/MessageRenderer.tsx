@@ -3,6 +3,7 @@ import { parseEventLog } from '@/utils/stream';
 import { MarkDown } from '@/components/ui';
 import { ThinkingBlock } from './ThinkingBlock';
 import { ReviewBlock } from './ReviewBlock';
+import { PromptSuggestions } from './PromptSuggestions';
 import { getToolComponent } from '@/components/chat/tools/registry';
 import { buildSegments } from './segmentBuilder';
 
@@ -11,6 +12,8 @@ interface MessageRendererProps {
   className?: string;
   isStreaming?: boolean;
   chatId?: string;
+  isLastBotMessage?: boolean;
+  onSuggestionSelect?: (suggestion: string) => void;
 }
 
 const MessageRendererInner: React.FC<MessageRendererProps> = ({
@@ -18,6 +21,8 @@ const MessageRendererInner: React.FC<MessageRendererProps> = ({
   className = '',
   isStreaming = false,
   chatId,
+  isLastBotMessage = false,
+  onSuggestionSelect,
 }) => {
   const { segments, activeThinkingIndex } = React.useMemo(() => {
     const parsedEvents = parseEventLog(content);
@@ -78,6 +83,18 @@ const MessageRendererInner: React.FC<MessageRendererProps> = ({
               <div key={segment.id} className="mb-3 mt-1">
                 <Component tool={segment.tool} chatId={chatId} />
               </div>
+            );
+          }
+          case 'suggestions': {
+            if (!isLastBotMessage || !onSuggestionSelect) {
+              return null;
+            }
+            return (
+              <PromptSuggestions
+                key={segment.id}
+                suggestions={segment.suggestions}
+                onSelect={onSuggestionSelect}
+              />
             );
           }
           default:
