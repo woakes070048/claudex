@@ -125,6 +125,9 @@ class ContextUsageTracker:
             return False
 
     async def poll_while_streaming(self) -> None:
+        # Local import to avoid circular import
+        from app.services.claude_agent import ClaudeAgentService
+
         redis_client: Redis[str] | None = None
 
         try:
@@ -146,8 +149,6 @@ class ContextUsageTracker:
                             self.user_id,
                         )
                         return
-
-                from app.services.claude_agent import ClaudeAgentService
 
                 async with ClaudeAgentService(
                     session_factory=session_factory

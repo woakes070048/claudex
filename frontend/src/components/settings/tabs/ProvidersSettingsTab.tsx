@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Plus, Pencil, Trash2, ChevronDown, ChevronRight, Check, X } from 'lucide-react';
-import { Button, Switch } from '@/components/ui';
+import { Button, Switch, ConfirmDialog } from '@/components/ui';
 import type { CustomProvider, ProviderType } from '@/types';
 
 interface ProvidersSettingsTabProps {
@@ -31,6 +31,7 @@ export const ProvidersSettingsTab: React.FC<ProvidersSettingsTabProps> = ({
   onToggleProvider,
 }) => {
   const [expandedProviders, setExpandedProviders] = useState<Set<string>>(new Set());
+  const [providerPendingDelete, setProviderPendingDelete] = useState<CustomProvider | null>(null);
 
   const toggleExpanded = (providerId: string) => {
     setExpandedProviders((prev) => {
@@ -48,6 +49,13 @@ export const ProvidersSettingsTab: React.FC<ProvidersSettingsTabProps> = ({
     const order: Record<ProviderType, number> = { anthropic: 0, openrouter: 1, custom: 2 };
     return order[a.provider_type] - order[b.provider_type];
   });
+
+  const handleConfirmDelete = () => {
+    if (providerPendingDelete) {
+      onDeleteProvider(providerPendingDelete.id);
+      setProviderPendingDelete(null);
+    }
+  };
 
   if (!providers || providers.length === 0) {
     return (
@@ -163,7 +171,7 @@ export const ProvidersSettingsTab: React.FC<ProvidersSettingsTabProps> = ({
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => onDeleteProvider(provider.id)}
+                      onClick={() => setProviderPendingDelete(provider)}
                       className="h-8 w-8 p-0 text-error-600 hover:bg-error-50 hover:text-error-700 dark:text-error-400 dark:hover:bg-error-900/20"
                     >
                       <Trash2 className="h-4 w-4" />
@@ -217,6 +225,16 @@ export const ProvidersSettingsTab: React.FC<ProvidersSettingsTabProps> = ({
           })}
         </div>
       </div>
+
+      <ConfirmDialog
+        isOpen={providerPendingDelete !== null}
+        onClose={() => setProviderPendingDelete(null)}
+        onConfirm={handleConfirmDelete}
+        title="Delete Provider"
+        message={`Are you sure you want to delete "${providerPendingDelete?.name}"? This action cannot be undone.`}
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+      />
     </div>
   );
 };
