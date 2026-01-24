@@ -6,7 +6,7 @@ from sqlalchemy.orm.attributes import flag_modified
 
 from app.core.deps import get_db, get_agent_service, get_user_service
 from app.core.security import get_current_user
-from app.models.db_models import User, UserSettings
+from app.models.db_models import DeleteResponseStatus, User, UserSettings
 from app.models.schemas import AgentDeleteResponse, AgentResponse, AgentUpdateRequest
 from app.models.types import CustomAgentDict
 from app.services.exceptions import AgentException, UserException
@@ -162,7 +162,7 @@ async def delete_agent(
     )
 
     if agent_index is None:
-        return AgentDeleteResponse(status="not_found")
+        return AgentDeleteResponse(status=DeleteResponseStatus.NOT_FOUND.value)
 
     await agent_service.delete(str(current_user.id), agent_name)
 
@@ -177,4 +177,4 @@ async def delete_agent(
         user_settings, db, current_user.id
     )
 
-    return AgentDeleteResponse(status="deleted")
+    return AgentDeleteResponse(status=DeleteResponseStatus.DELETED.value)

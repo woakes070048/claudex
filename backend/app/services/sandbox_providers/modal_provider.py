@@ -19,7 +19,9 @@ from app.constants import (
     OPENVSCODE_PORT,
     SANDBOX_DEFAULT_COMMAND_TIMEOUT,
     SANDBOX_DEFAULT_TIMEOUT,
+    SANDBOX_HOME_DIR,
     SANDBOX_SYSTEM_VARIABLES,
+    TERMINAL_TYPE,
     VNC_WEBSOCKET_PORT,
 )
 from app.core.config import get_settings
@@ -282,7 +284,7 @@ class ModalSandboxProvider(SandboxProvider):
             sandbox.exec.aio,
             "bash",
             pty=True,
-            env={"TERM": "xterm-256color"},
+            env={"TERM": TERMINAL_TYPE},
         )
 
         self._register_pty_session(
@@ -400,7 +402,7 @@ class ModalSandboxProvider(SandboxProvider):
         try:
             tunnels = sandbox.tunnels()
             if OPENVSCODE_PORT in tunnels:
-                return f"{tunnels[OPENVSCODE_PORT].url}/?folder=/home/user"
+                return f"{tunnels[OPENVSCODE_PORT].url}/?folder={SANDBOX_HOME_DIR}"
         except Exception as e:
             logger.warning("Failed to get IDE URL for sandbox %s: %s", sandbox_id, e)
 

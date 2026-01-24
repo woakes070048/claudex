@@ -5,6 +5,7 @@ from typing import Literal, cast
 
 from claude_agent_sdk.types import ToolUseBlock
 
+from app.models.db_models import ToolStatus
 from app.models.types import JSONValue
 from app.services.streaming.events import ActiveToolState, StreamEvent
 
@@ -50,7 +51,7 @@ class ToolHandlerRegistry:
         self._active[content_block.id] = tool_state
 
         payload = tool_state.to_payload()
-        payload["status"] = "started"
+        payload["status"] = ToolStatus.STARTED.value
         event: StreamEvent = {
             "type": "tool_started",
             "tool": payload,
@@ -78,7 +79,9 @@ class ToolHandlerRegistry:
             )
 
         payload = state.to_payload()
-        payload["status"] = "failed" if is_error else "completed"
+        payload["status"] = (
+            ToolStatus.FAILED.value if is_error else ToolStatus.COMPLETED.value
+        )
 
         if is_error:
             payload["error"] = self._stringify_result(raw_result)

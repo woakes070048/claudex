@@ -4,6 +4,7 @@ import json
 from typing import TYPE_CHECKING, Any
 from uuid import UUID
 
+from app.constants import SANDBOX_HOME_DIR
 from app.models.db_models import Message, MessageRole, MessageStreamStatus
 from app.services.message import MessageService
 from app.services.queue import QueueService, serialize_message_attachments
@@ -103,7 +104,7 @@ class QueueInjector:
 
         return {
             "type": "user",
-            "message": {"role": "user", "content": prompt},
+            "message": {"role": MessageRole.USER.value, "content": prompt},
             "parent_tool_use_id": None,
             "session_id": session_id,
         }
@@ -117,7 +118,8 @@ class QueueInjector:
             return f"<user_prompt>{content}</user_prompt>"
 
         files_list = "\n".join(
-            f"- /home/user/{att['file_path'].split('/')[-1]}" for att in attachments
+            f"- {SANDBOX_HOME_DIR}/{att['file_path'].split('/')[-1]}"
+            for att in attachments
         )
         return (
             f"<user_attachments>\nUser uploaded the following files\n{files_list}\n</user_attachments>\n\n"

@@ -19,11 +19,15 @@ StreamEventType = Literal[
 ]
 
 
+# Tool status values - should match ToolStatus enum in app.models.db_models.enums
+ToolStatusLiteral = Literal["started", "completed", "failed"]
+
+
 class ToolPayload(TypedDict, total=False):
     id: str
     name: str
     title: str
-    status: Literal["started", "completed", "failed"]
+    status: ToolStatusLiteral
     parent_id: str | None
     input: JSONDict | None
     result: JSONValue

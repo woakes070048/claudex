@@ -9,7 +9,19 @@ from typing import Any
 from fastapi import APIRouter, WebSocket
 from starlette.websockets import WebSocketDisconnect
 
-from app.constants import PTY_INPUT_QUEUE_SIZE
+from app.constants import (
+    DEFAULT_PTY_COLS,
+    DEFAULT_PTY_ROWS,
+    PTY_INPUT_QUEUE_SIZE,
+    WS_CLOSE_API_KEY_REQUIRED,
+    WS_CLOSE_AUTH_FAILED,
+    WS_CLOSE_SANDBOX_NOT_FOUND,
+    WS_MSG_AUTH,
+    WS_MSG_CLOSE,
+    WS_MSG_INIT,
+    WS_MSG_PING,
+    WS_MSG_RESIZE,
+)
 from app.core.config import get_settings
 from app.core.security import get_user_from_token
 from app.db.session import SessionLocal
@@ -37,7 +49,7 @@ async def authenticate_user(
         async with SessionLocal() as db:
             user = await get_user_from_token(token, db)
             if not user:
-                return None, None, None, "docker"
+                return None, None, None, SandboxProviderType.DOCKER.value
 
             user_service = UserService(session_factory=SessionLocal)
             try:
@@ -48,13 +60,13 @@ async def authenticate_user(
             except UserException:
                 e2b_api_key = None
                 modal_api_key = None
-                sandbox_provider = "docker"
+                sandbox_provider = SandboxProviderType.DOCKER.value
 
         return user, e2b_api_key, modal_api_key, sandbox_provider
 
     except Exception as e:
         logger.warning("WebSocket authentication failed: %s", e)
-        return None, None, None, "docker"
+        return None, None, None, SandboxProviderType.DOCKER.value
 
 
 async def wait_for_auth(
@@ -63,22 +75,22 @@ async def wait_for_auth(
     try:
         message = await asyncio.wait_for(websocket.receive(), timeout=timeout)
     except asyncio.TimeoutError:
-        return None, None, None, "docker"
+        return None, None, None, SandboxProviderType.DOCKER.value
 
     if "text" not in message:
-        return None, None, None, "docker"
+        return None, None, None, SandboxProviderType.DOCKER.value
 
     try:
         data = json.loads(message["text"])
     except json.JSONDecodeError:
-        return None, None, None, "docker"
+        return None, None, None, SandboxProviderType.DOCKER.value
 
-    if data.get("type") != "auth":
-        return None, None, None, "docker"
+    if data.get("type") != WS_MSG_AUTH:
+        return None, None, None, SandboxProviderType.DOCKER.value
 
     token = data.get("token")
     if not token:
-        return None, None, None, "docker"
+        return None, None, None, SandboxProviderType.DOCKER.value
 
     return await authenticate_user(token)
 
@@ -201,7 +213,7 @@ async def terminal_websocket(
         websocket
     )
     if not user:
-        await websocket.close(code=4001, reason="Authentication failed")
+        await websocket.close(code=WS_CLOSE_AUTH_FAILED, reason="Authentication failed")
         return
 
     async with SessionLocal() as db:
@@ -213,21 +225,23 @@ async def terminal_websocket(
         result = await db.execute(query)
         row = result.one_or_none()
         if not row:
-            await websocket.close(code=4004, reason="Sandbox not found")
+            await websocket.close(
+                code=WS_CLOSE_SANDBOX_NOT_FOUND, reason="Sandbox not found"
+            )
             return
         sandbox_provider_type = row.sandbox_provider or user_sandbox_provider
 
     provider_type = SandboxProviderType(sandbox_provider_type)
     if provider_type == SandboxProviderType.E2B and not e2b_api_key:
         await websocket.close(
-            code=4003,
+            code=WS_CLOSE_API_KEY_REQUIRED,
             reason="E2B API key is required. Please configure your E2B API key in Settings.",
         )
         return
 
     if provider_type == SandboxProviderType.MODAL and not modal_api_key:
         await websocket.close(
-            code=4003,
+            code=WS_CLOSE_API_KEY_REQUIRED,
             reason="Modal API key is required. Please configure your Modal API key in Settings.",
         )
         return
@@ -248,7 +262,7 @@ async def terminal_websocket(
             try:
                 message = await asyncio.wait_for(websocket.receive(), timeout=30.0)
             except asyncio.TimeoutError:
-                await websocket.send_text(json.dumps({"type": "ping"}))
+                await websocket.send_text(json.dumps({"type": WS_MSG_PING}))
                 continue
 
             if "bytes" in message:
@@ -265,16 +279,16 @@ async def terminal_websocket(
 
             data_type = data.get("type")
 
-            if data_type == "init":
-                rows = int(data.get("rows") or 24)
-                cols = int(data.get("cols") or 80)
+            if data_type == WS_MSG_INIT:
+                rows = int(data.get("rows") or DEFAULT_PTY_ROWS)
+                cols = int(data.get("cols") or DEFAULT_PTY_COLS)
 
                 pty_session = await session.start(rows, cols)
 
                 await websocket.send_text(
                     json.dumps(
                         {
-                            "type": "init",
+                            "type": WS_MSG_INIT,
                             "id": pty_session["id"],
                             "rows": pty_session["rows"],
                             "cols": pty_session["cols"],
@@ -282,11 +296,11 @@ async def terminal_websocket(
                     )
                 )
 
-            elif data_type == "resize":
+            elif data_type == WS_MSG_RESIZE:
                 rows = int(data.get("rows") or 0)
                 cols = int(data.get("cols") or 0)
                 await session.resize(rows, cols)
-            elif data_type == "close":
+            elif data_type == WS_MSG_CLOSE:
                 break
     except WebSocketDisconnect:
         pass

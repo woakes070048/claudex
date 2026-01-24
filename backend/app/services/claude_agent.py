@@ -12,10 +12,12 @@ from claude_agent_sdk import (
     TextBlock,
     UserMessage,
 )
+from app.constants import SANDBOX_GIT_ASKPASS_PATH, SANDBOX_HOME_DIR
 from app.core.config import get_settings
 from app.core.security import create_chat_scoped_token
 from app.db.session import SessionLocal
-from app.models.db_models import Chat, User, UserSettings
+from app.models.db_models import Chat, MessageRole, User, UserSettings
+from app.models.schemas.settings import ProviderType
 from app.prompts.enhance_prompt import get_enhance_prompt
 from app.services.provider import ProviderService
 from app.services.exceptions import ClaudeAgentException
@@ -206,7 +208,7 @@ class ClaudeAgentService:
 
         prompt_message = {
             "type": "user",
-            "message": {"role": "user", "content": user_prompt},
+            "message": {"role": MessageRole.USER.value, "content": user_prompt},
             "parent_tool_use_id": None,
             "session_id": session_id,
         }
@@ -284,15 +286,19 @@ class ClaudeAgentService:
         provider_type = provider.get("provider_type", "custom")
         auth_token = provider.get("auth_token")
 
-        if provider_type == "anthropic":
+        if provider_type == ProviderType.ANTHROPIC.value:
             if auth_token:
                 env["CLAUDE_CODE_OAUTH_TOKEN"] = auth_token
-        elif provider_type == "openrouter":
-            if auth_token:
+        elif provider_type in (
+            ProviderType.OPENROUTER.value,
+            ProviderType.OPENAI.value,
+        ):
+            if auth_token and provider_type == ProviderType.OPENROUTER.value:
                 env["OPENROUTER_API_KEY"] = auth_token
             env["ANTHROPIC_BASE_URL"] = "http://127.0.0.1:3456"
             env["ANTHROPIC_AUTH_TOKEN"] = "placeholder"
-        elif provider_type == "custom":
+            env["CLAUDE_CODE_SUBAGENT_MODEL"] = actual_model_id
+        elif provider_type == ProviderType.CUSTOM.value:
             if provider.get("base_url"):
                 env["ANTHROPIC_BASE_URL"] = provider["base_url"]
             if auth_token:
@@ -339,7 +345,10 @@ class ClaudeAgentService:
 
         if settings.DOCKER_PERMISSION_API_URL:
             api_base_url = settings.DOCKER_PERMISSION_API_URL
-        elif sandbox_provider in ("e2b", "modal"):
+        elif sandbox_provider in (
+            SandboxProviderType.E2B.value,
+            SandboxProviderType.MODAL.value,
+        ):
             api_base_url = settings.BASE_URL.rstrip("/")
         else:
             base_url = settings.BASE_URL
@@ -471,7 +480,7 @@ class ClaudeAgentService:
 
         if user_settings.github_personal_access_token:
             env["GITHUB_TOKEN"] = user_settings.github_personal_access_token
-            env["GIT_ASKPASS"] = "/home/user/.git-askpass.sh"
+            env["GIT_ASKPASS"] = SANDBOX_GIT_ASKPASS_PATH
             env["GIT_AUTHOR_NAME"] = "Claudex"
             env["GIT_AUTHOR_EMAIL"] = "noreply@claudex.com"
             env["GIT_COMMITTER_NAME"] = "Claudex"
@@ -482,7 +491,7 @@ class ClaudeAgentService:
                 env[env_var["key"]] = env_var["value"]
 
         disallowed_tools: list[str] = []
-        if provider_type != "anthropic":
+        if provider_type != ProviderType.ANTHROPIC.value:
             disallowed_tools.append("WebSearch")
 
         sdk_permission_mode: SDKPermissionMode = SDK_PERMISSION_MODE_MAP.get(
@@ -513,7 +522,7 @@ class ClaudeAgentService:
                 permission_mode,
                 chat_id,
             ),
-            cwd="/home/user",
+            cwd=SANDBOX_HOME_DIR,
             user="user",
             resume=session_id,
             env=env,
@@ -544,7 +553,7 @@ class ClaudeAgentService:
 
         if attachments:
             files_list = "\n".join(
-                f"- /home/user/{attachment['file_path'].split('/')[-1]}"
+                f"- {SANDBOX_HOME_DIR}/{attachment['file_path'].split('/')[-1]}"
                 for attachment in attachments
             )
             parts.append(
@@ -577,7 +586,7 @@ class ClaudeAgentService:
                 system_prompt="",
                 permission_mode="bypassPermissions",
                 model=actual_model_id,
-                cwd="/home/user",
+                cwd=SANDBOX_HOME_DIR,
                 user="user",
                 resume=session_id,
                 env=env,
@@ -585,7 +594,7 @@ class ClaudeAgentService:
 
             prompt_message = {
                 "type": "user",
-                "message": {"role": "user", "content": "/context"},
+                "message": {"role": MessageRole.USER.value, "content": "/context"},
                 "parent_tool_use_id": None,
                 "session_id": session_id,
             }

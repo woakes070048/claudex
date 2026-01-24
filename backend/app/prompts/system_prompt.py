@@ -2,6 +2,7 @@ from datetime import datetime
 from typing import TYPE_CHECKING
 
 from app.constants import DOCKER_AVAILABLE_PORTS
+from app.services.sandbox_providers import SandboxProviderType
 
 if TYPE_CHECKING:
     from app.models.db_models import UserSettings
@@ -59,7 +60,11 @@ def _get_runtime_context_section(
     sandbox_provider: str = "docker",
 ) -> str:
     ports_str = ", ".join(str(p) for p in DOCKER_AVAILABLE_PORTS)
-    provider_label = "E2B (cloud)" if sandbox_provider == "e2b" else "Docker (local)"
+    provider_label = (
+        "E2B (cloud)"
+        if sandbox_provider == SandboxProviderType.E2B.value
+        else "Docker (local)"
+    )
     return f"""<runtime_context>
 - Workspace: /home/user
 - Sandbox: {sandbox_id}

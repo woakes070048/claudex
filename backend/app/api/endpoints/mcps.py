@@ -8,7 +8,7 @@ from sqlalchemy.orm.attributes import flag_modified
 
 from app.core.deps import get_db, get_user_service
 from app.core.security import get_current_user
-from app.models.db_models import User
+from app.models.db_models import DeleteResponseStatus, User
 from app.models.schemas import (
     McpCreateRequest,
     McpDeleteResponse,
@@ -160,7 +160,7 @@ async def delete_mcp(
     )
 
     if mcp_index is None:
-        return McpDeleteResponse(status="not_found")
+        return McpDeleteResponse(status=DeleteResponseStatus.NOT_FOUND.value)
 
     current_mcps.pop(mcp_index)
     user_settings.custom_mcps = current_mcps
@@ -173,4 +173,4 @@ async def delete_mcp(
         user_settings, db, current_user.id
     )
 
-    return McpDeleteResponse(status="deleted")
+    return McpDeleteResponse(status=DeleteResponseStatus.DELETED.value)

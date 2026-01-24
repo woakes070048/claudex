@@ -6,7 +6,7 @@ from sqlalchemy.orm.attributes import flag_modified
 
 from app.core.deps import get_db, get_command_service, get_user_service
 from app.core.security import get_current_user
-from app.models.db_models import User, UserSettings
+from app.models.db_models import DeleteResponseStatus, User, UserSettings
 from app.models.schemas import (
     CommandDeleteResponse,
     CommandResponse,
@@ -170,7 +170,7 @@ async def delete_command(
     )
 
     if command_index is None:
-        return CommandDeleteResponse(status="not_found")
+        return CommandDeleteResponse(status=DeleteResponseStatus.NOT_FOUND.value)
 
     await command_service.delete(str(current_user.id), command_name)
 
@@ -187,4 +187,4 @@ async def delete_command(
         user_settings, db, current_user.id
     )
 
-    return CommandDeleteResponse(status="deleted")
+    return CommandDeleteResponse(status=DeleteResponseStatus.DELETED.value)

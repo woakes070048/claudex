@@ -6,7 +6,7 @@ from sqlalchemy.orm.attributes import flag_modified
 
 from app.core.deps import get_db, get_skill_service, get_user_service
 from app.core.security import get_current_user
-from app.models.db_models import User, UserSettings
+from app.models.db_models import DeleteResponseStatus, User, UserSettings
 from app.models.schemas import SkillDeleteResponse, SkillResponse
 from app.models.types import CustomSkillDict
 from app.services.exceptions import SkillException, UserException
@@ -95,7 +95,7 @@ async def delete_skill(
     )
 
     if skill_index is None:
-        return SkillDeleteResponse(status="not_found")
+        return SkillDeleteResponse(status=DeleteResponseStatus.NOT_FOUND.value)
 
     await skill_service.delete(str(current_user.id), skill_name)
 
@@ -110,4 +110,4 @@ async def delete_skill(
         user_settings, db, current_user.id
     )
 
-    return SkillDeleteResponse(status="deleted")
+    return SkillDeleteResponse(status=DeleteResponseStatus.DELETED.value)

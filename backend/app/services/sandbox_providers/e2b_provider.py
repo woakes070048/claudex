@@ -17,7 +17,9 @@ from app.constants import (
     SANDBOX_AUTO_PAUSE_TIMEOUT,
     SANDBOX_DEFAULT_COMMAND_TIMEOUT,
     SANDBOX_DEFAULT_TIMEOUT,
+    SANDBOX_HOME_DIR,
     SANDBOX_SYSTEM_VARIABLES,
+    TERMINAL_TYPE,
 )
 from app.core.config import get_settings
 from app.services.exceptions import ErrorCode, SandboxException
@@ -236,8 +238,8 @@ class E2BSandboxProvider(SandboxProvider):
             on_data=lambda data: on_data(normalize_e2b_pty_data(data))
             if on_data
             else None,
-            cwd="/home/user",
-            envs={"TERM": "xterm-256color"},
+            cwd=SANDBOX_HOME_DIR,
+            envs={"TERM": TERMINAL_TYPE},
             timeout=None,
         )
 
@@ -345,7 +347,9 @@ class E2BSandboxProvider(SandboxProvider):
 
     async def get_ide_url(self, sandbox_id: str) -> str | None:
         openvscode_port = 8765
-        return f"https://{openvscode_port}-{sandbox_id}.e2b.dev/?folder=/home/user"
+        return (
+            f"https://{openvscode_port}-{sandbox_id}.e2b.dev/?folder={SANDBOX_HOME_DIR}"
+        )
 
     async def get_vnc_url(self, sandbox_id: str) -> str | None:
         vnc_websocket_port = 6080

@@ -10,6 +10,7 @@ from typing import Any
 from claude_agent_sdk._errors import CLIConnectionError, ProcessError
 from claude_agent_sdk.types import ClaudeAgentOptions
 
+from app.constants import TERMINAL_TYPE
 from app.services.sandbox_providers.types import DockerConfig
 from app.services.transports.base import BaseSandboxTransport
 
@@ -111,7 +112,7 @@ class DockerSandboxTransport(BaseSandboxTransport):
 
         command_line = self._build_command()
         envs, cwd, user = self._prepare_environment()
-        envs["TERM"] = "xterm-256color"
+        envs["TERM"] = TERMINAL_TYPE
 
         try:
             self._exec_id, self._socket = await loop.run_in_executor(

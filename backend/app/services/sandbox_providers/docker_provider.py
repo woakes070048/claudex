@@ -10,8 +10,11 @@ from typing import Any
 
 from app.constants import (
     DOCKER_AVAILABLE_PORTS,
+    DOCKER_STATUS_RUNNING,
     EXCLUDED_PREVIEW_PORTS,
     SANDBOX_DEFAULT_COMMAND_TIMEOUT,
+    SANDBOX_HOME_DIR,
+    TERMINAL_TYPE,
     VNC_WEBSOCKET_PORT,
 )
 from app.services.exceptions import SandboxException
@@ -119,7 +122,7 @@ class LocalDockerProvider(SandboxProvider):
             labels=labels,
             ports={f"{port}/tcp": None for port in DOCKER_AVAILABLE_PORTS},
             environment={
-                "TERM": "xterm-256color",
+                "TERM": TERMINAL_TYPE,
                 "HOME": self.config.user_home,
                 "USER": "user",
                 "OPENVSCODE_PORT": str(self.config.openvscode_port),
@@ -165,7 +168,7 @@ class LocalDockerProvider(SandboxProvider):
 
     def _is_container_running(self, container: Any) -> bool:
         container.reload()
-        return bool(container.status == "running")
+        return bool(container.status == DOCKER_STATUS_RUNNING)
 
     def _get_container_by_id(self, sandbox_id: str) -> Any | None:
         client = self._get_docker_client()
@@ -361,7 +364,7 @@ class LocalDockerProvider(SandboxProvider):
             cmd="/bin/bash",
             stdin=True,
             tty=True,
-            environment={"TERM": "xterm-256color"},
+            environment={"TERM": TERMINAL_TYPE},
             workdir=self.config.user_home,
         )
         socket = container.client.api.exec_start(
@@ -580,7 +583,7 @@ class LocalDockerProvider(SandboxProvider):
     @staticmethod
     def _ensure_running(container: Any) -> None:
         container.reload()
-        if container.status != "running":
+        if container.status != DOCKER_STATUS_RUNNING:
             container.start()
 
     async def _get_container(self, sandbox_id: str) -> Any:
@@ -600,16 +603,14 @@ class LocalDockerProvider(SandboxProvider):
     async def get_ide_url(self, sandbox_id: str) -> str | None:
         if self.config.sandbox_domain:
             subdomain = f"sandbox-{sandbox_id}-{self.config.openvscode_port}"
-            return (
-                f"https://{subdomain}.{self.config.sandbox_domain}/?folder=/home/user"
-            )
+            return f"https://{subdomain}.{self.config.sandbox_domain}/?folder={SANDBOX_HOME_DIR}"
 
         await self.connect_sandbox(sandbox_id)
         port_map = self._port_mappings.get(sandbox_id, {})
         host_port = port_map.get(self.config.openvscode_port)
         if not host_port:
             return None
-        return f"{self.config.preview_base_url}:{host_port}/?folder=/home/user"
+        return f"{self.config.preview_base_url}:{host_port}/?folder={SANDBOX_HOME_DIR}"
 
     async def get_vnc_url(self, sandbox_id: str) -> str | None:
         if self.config.sandbox_domain:
@@ -648,7 +649,7 @@ class LocalDockerProvider(SandboxProvider):
             labels=labels,
             ports={f"{port}/tcp": None for port in DOCKER_AVAILABLE_PORTS},
             environment={
-                "TERM": "xterm-256color",
+                "TERM": TERMINAL_TYPE,
                 "HOME": self.config.user_home,
                 "USER": "user",
                 "OPENVSCODE_PORT": str(self.config.openvscode_port),

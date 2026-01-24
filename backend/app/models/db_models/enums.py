@@ -38,3 +38,29 @@ class TaskExecutionStatus(str, enum.Enum):
     RUNNING = "running"
     SUCCESS = "success"
     FAILED = "failed"
+
+
+class ToolStatus(str, enum.Enum):
+    STARTED = "started"
+    COMPLETED = "completed"
+    FAILED = "failed"
+
+
+class StreamEventKind(str, enum.Enum):
+    CONTENT = "content"
+    COMPLETE = "complete"
+    ERROR = "error"
+    QUEUE_INJECTED = "queue_injected"
+    QUEUE_PROCESSING = "queue_processing"
+
+
+class DeleteResponseStatus(str, enum.Enum):
+    DELETED = "deleted"
+    NOT_FOUND = "not_found"
+
+
+class ComponentType(str, enum.Enum):
+    AGENT = "agent"
+    COMMAND = "command"
+    SKILL = "skill"
+    MCP = "mcp"

@@ -12,6 +12,7 @@ from app.constants import (
     REDIS_KEY_CHAT_TASK,
 )
 from app.core.config import get_settings
+from app.models.db_models import StreamEventKind
 from app.services.streaming.events import StreamEvent
 
 if TYPE_CHECKING:
@@ -76,13 +77,13 @@ class StreamPublisher:
             )
 
     async def publish_event(self, event: StreamEvent) -> None:
-        await self.publish("content", {"event": event})
+        await self.publish(StreamEventKind.CONTENT.value, {"event": event})
 
     async def publish_complete(self) -> None:
-        await self.publish("complete")
+        await self.publish(StreamEventKind.COMPLETE.value)
 
     async def publish_error(self, error: str) -> None:
-        await self.publish("error", {"error": error})
+        await self.publish(StreamEventKind.ERROR.value, {"error": error})
 
     async def publish_queue_event(
         self,
@@ -94,7 +95,11 @@ class StreamPublisher:
         attachments: list[dict[str, Any]] | None = None,
         injected_inline: bool = False,
     ) -> None:
-        event_type = "queue_injected" if injected_inline else "queue_processing"
+        event_type = (
+            StreamEventKind.QUEUE_INJECTED.value
+            if injected_inline
+            else StreamEventKind.QUEUE_PROCESSING.value
+        )
         payload: dict[str, Any] = {
             "queued_message_id": queued_message_id,
             "user_message_id": user_message_id,

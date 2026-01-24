@@ -12,8 +12,10 @@ import posixpath
 from app.constants import (
     CHECKPOINT_BASE_DIR,
     MAX_CHECKPOINTS_PER_SANDBOX,
+    SANDBOX_BASHRC_PATH,
     SANDBOX_BINARY_EXTENSIONS,
     SANDBOX_EXCLUDED_PATHS,
+    SANDBOX_HOME_DIR,
     SANDBOX_RESTORE_EXCLUDE_PATTERNS,
     SANDBOX_SYSTEM_VARIABLES,
 )
@@ -40,7 +42,7 @@ class SandboxProvider(ABC):
     _pty_sessions: dict[str, dict[str, Any]]
 
     @staticmethod
-    def normalize_path(file_path: str, base: str = "/home/user") -> str:
+    def normalize_path(file_path: str, base: str = SANDBOX_HOME_DIR) -> str:
         path = PurePosixPath(file_path)
 
         if path.is_absolute() and str(path).startswith(base):
@@ -198,7 +200,7 @@ class SandboxProvider(ABC):
     async def list_files(
         self,
         sandbox_id: str,
-        path: str = "/home/user",
+        path: str = SANDBOX_HOME_DIR,
         excluded_patterns: list[str] | None = None,
     ) -> list[FileMetadata]:
         patterns = excluded_patterns or SANDBOX_EXCLUDED_PATHS
@@ -226,13 +228,14 @@ class SandboxProvider(ABC):
 
             file_path, file_type, size, mtime = parts[0], parts[1], parts[2], parts[3]
 
-            if not file_path or file_path == "/home/user" or file_path == "":
+            if not file_path or file_path == SANDBOX_HOME_DIR or file_path == "":
                 continue
 
-            if file_path.startswith("/home/user/"):
-                file_path = file_path[11:]
-            elif file_path.startswith("/home/user"):
-                file_path = file_path[10:]
+            home_dir_slash = f"{SANDBOX_HOME_DIR}/"
+            if file_path.startswith(home_dir_slash):
+                file_path = file_path[len(home_dir_slash) :]
+            elif file_path.startswith(SANDBOX_HOME_DIR):
+                file_path = file_path[len(SANDBOX_HOME_DIR) :]
 
             if file_type == "f":
                 is_binary = (
@@ -333,13 +336,13 @@ class SandboxProvider(ABC):
                 f"rsync -a --delete "
                 f"--link-dest={shlex.quote(prev_checkpoint)} "
                 f"{exclude_args} "
-                f"/home/user/ {shlex.quote(checkpoint_dir)}/"
+                f"{SANDBOX_HOME_DIR}/ {shlex.quote(checkpoint_dir)}/"
             )
         else:
             rsync_cmd = (
                 f"rsync -a --delete "
                 f"{exclude_args} "
-                f"/home/user/ {shlex.quote(checkpoint_dir)}/"
+                f"{SANDBOX_HOME_DIR}/ {shlex.quote(checkpoint_dir)}/"
             )
 
         try:
@@ -380,7 +383,7 @@ class SandboxProvider(ABC):
             f"rsync -a --delete "
             f"{exclude_args} "
             f"--stats "
-            f"{shlex.quote(checkpoint_dir)}/ /home/user/"
+            f"{shlex.quote(checkpoint_dir)}/ {SANDBOX_HOME_DIR}/"
         )
 
         await self.execute_command(sandbox_id, rsync_cmd)
@@ -435,7 +438,7 @@ class SandboxProvider(ABC):
     async def get_secrets(self, sandbox_id: str) -> list[SecretEntry]:
         result = await self.execute_command(
             sandbox_id,
-            "grep '^export' ~/.bashrc | sed 's/^export //g'",
+            f"grep '^export' {SANDBOX_BASHRC_PATH} | sed 's/^export //g'",
             timeout=5,
         )
 
@@ -460,7 +463,9 @@ class SandboxProvider(ABC):
         value: str,
     ) -> None:
         export_command = self.format_export_command(key, value)
-        await self.execute_command(sandbox_id, f'echo "{export_command}" >> ~/.bashrc')
+        await self.execute_command(
+            sandbox_id, f'echo "{export_command}" >> {SANDBOX_BASHRC_PATH}'
+        )
 
     async def delete_secret(
         self,
@@ -469,7 +474,7 @@ class SandboxProvider(ABC):
     ) -> None:
         escaped_key = key.replace(".", r"\.").replace("*", r"\*")
         await self.execute_command(
-            sandbox_id, f"sed -i '/^export {escaped_key}=/d' ~/.bashrc"
+            sandbox_id, f"sed -i '/^export {escaped_key}=/d' {SANDBOX_BASHRC_PATH}"
         )
 
     async def cleanup(self) -> None:

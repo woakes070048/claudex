@@ -74,11 +74,13 @@ async def make_auth_headers(user: User) -> dict[str, str]:
 
 
 def get_default_test_providers(auth_token: str | None = None) -> list[dict]:
+    from app.models.schemas.settings import ProviderType
+
     return [
         {
             "id": "anthropic",
             "name": "Anthropic",
-            "provider_type": "anthropic",
+            "provider_type": ProviderType.ANTHROPIC.value,
             "base_url": "https://api.anthropic.com",
             "auth_token": auth_token or "test_anthropic_token",
             "enabled": True,

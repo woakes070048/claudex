@@ -79,7 +79,6 @@ const createFallbackSettings = (): UserSettings => ({
   e2b_api_key: null,
   modal_api_key: null,
   sandbox_provider: null,
-  codex_auth_json: null,
   custom_instructions: null,
   custom_providers: null,
   custom_agents: null,
@@ -96,14 +95,14 @@ const createFallbackSettings = (): UserSettings => ({
 });
 
 const TAB_FIELDS: Record<TabKey, (keyof UserSettings)[]> = {
+  // Only include fields that require manual save (not auto-saved via persistSettings)
   general: [
     'github_personal_access_token',
     'e2b_api_key',
     'modal_api_key',
-    'sandbox_provider',
-    'codex_auth_json',
-    'auto_compact_disabled',
-    'attribution_disabled',
+    // Note: sandbox_provider, auto_compact_disabled, and attribution_disabled are
+    // excluded because they are auto-saved immediately and shouldn't trigger the
+    // "unsaved changes" banner
   ],
   providers: ['custom_providers'],
   marketplace: [],
@@ -195,7 +194,6 @@ const SettingsPage: React.FC = () => {
         'e2b_api_key',
         'modal_api_key',
         'sandbox_provider',
-        'codex_auth_json',
         'custom_instructions',
         'custom_providers',
         'custom_agents',
@@ -471,10 +469,6 @@ const SettingsPage: React.FC = () => {
     persistSettings((prev) => ({ ...prev, attribution_disabled: disabled }));
   };
 
-  const handleCodexAuthChange = (content: string | null) => {
-    persistSettings((prev) => ({ ...prev, codex_auth_json: content }));
-  };
-
   const handleSandboxProviderChange = (provider: SandboxProviderType) => {
     persistSettings((prev) => ({ ...prev, sandbox_provider: provider }));
   };
@@ -632,7 +626,6 @@ const SettingsPage: React.FC = () => {
                     onNotificationSoundChange={handleNotificationSoundChange}
                     onAutoCompactDisabledChange={handleAutoCompactDisabledChange}
                     onAttributionDisabledChange={handleAttributionDisabledChange}
-                    onCodexAuthChange={handleCodexAuthChange}
                     onSandboxProviderChange={handleSandboxProviderChange}
                   />
                 </div>

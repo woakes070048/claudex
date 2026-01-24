@@ -1,10 +1,14 @@
 from .enums import (
     AttachmentType,
+    ComponentType,
+    DeleteResponseStatus,
     MessageRole,
     MessageStreamStatus,
     RecurrenceType,
+    StreamEventKind,
     TaskExecutionStatus,
     TaskStatus,
+    ToolStatus,
 )
 from .chat import Chat, Message, MessageAttachment
 from .refresh_token import RefreshToken
@@ -13,11 +17,15 @@ from .user import User, UserSettings
 
 __all__ = [
     "AttachmentType",
+    "ComponentType",
+    "DeleteResponseStatus",
     "MessageRole",
     "MessageStreamStatus",
     "RecurrenceType",
+    "StreamEventKind",
     "TaskExecutionStatus",
     "TaskStatus",
+    "ToolStatus",
     "Chat",
     "Message",
     "MessageAttachment",

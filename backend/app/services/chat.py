@@ -10,6 +10,7 @@ from sqlalchemy import exists, func, select, update
 from sqlalchemy.orm import selectinload
 
 from app.constants import REDIS_KEY_CHAT_TASK
+from app.models.db_models import ToolStatus
 from app.core.config import get_settings
 from app.models.db_models import (
     Chat,
@@ -131,7 +132,6 @@ class ChatService(BaseDbService[Chat]):
         custom_agents = user_settings.custom_agents
         auto_compact_disabled = user_settings.auto_compact_disabled
         attribution_disabled = user_settings.attribution_disabled
-        codex_auth_json = user_settings.codex_auth_json
         custom_providers = user_settings.custom_providers
 
         await self.sandbox_service.initialize_sandbox(
@@ -144,7 +144,6 @@ class ChatService(BaseDbService[Chat]):
             user_id=str(user.id),
             auto_compact_disabled=auto_compact_disabled,
             attribution_disabled=attribution_disabled,
-            codex_auth_json=codex_auth_json,
             custom_providers=custom_providers,
         )
 
@@ -469,7 +468,7 @@ class ChatService(BaseDbService[Chat]):
             "task_id": task.id,
             "message_id": str(assistant_message.id),
             "chat_id": str(chat_id),
-            "status": "started",
+            "status": ToolStatus.STARTED.value,
         }
 
     async def get_chat_by_sandbox_id(
@@ -547,7 +546,7 @@ class ChatService(BaseDbService[Chat]):
         )
 
         sandbox_provider = user_settings.sandbox_provider
-        if sandbox_provider != "docker":
+        if sandbox_provider != SandboxProviderType.DOCKER.value:
             raise ChatException(
                 "Fork is only supported with Docker sandbox provider",
                 error_code=ErrorCode.VALIDATION_ERROR,
@@ -752,7 +751,7 @@ class ChatService(BaseDbService[Chat]):
         )
         new_provider_type = new_provider.get("provider_type") if new_provider else None
 
-        if new_provider_type != "anthropic":
+        if new_provider_type != ProviderType.ANTHROPIC.value:
             return False
 
         last_message = await self.message_service.get_latest_assistant_message(chat_id)

@@ -12,7 +12,18 @@ from typing import Any, Callable, Coroutine
 
 from fastapi import WebSocket
 
-from app.constants import PTY_OUTPUT_QUEUE_SIZE
+from app.constants import (
+    ANTHROPIC_BRIDGE_HOST,
+    ANTHROPIC_BRIDGE_PORT,
+    PTY_OUTPUT_QUEUE_SIZE,
+    SANDBOX_CLAUDE_DIR,
+    SANDBOX_CLAUDE_JSON_PATH,
+    SANDBOX_GIT_ASKPASS_PATH,
+    SANDBOX_HOME_DIR,
+    SANDBOX_IDE_CONFIG_DIR,
+    SANDBOX_IDE_SETTINGS_PATH,
+    SANDBOX_IDE_TOKEN_PATH,
+)
 from app.models.types import (
     CustomAgentDict,
     CustomEnvVarDict,
@@ -20,6 +31,7 @@ from app.models.types import (
     CustomSkillDict,
     CustomSlashCommandDict,
 )
+from app.models.schemas.settings import ProviderType
 from app.services.agent import AgentService
 from app.services.command import CommandService
 from app.services.exceptions import SandboxException
@@ -34,9 +46,6 @@ from app.utils.queue import drain_queue, put_with_overflow
 logger = logging.getLogger(__name__)
 
 OPENVSCODE_PORT = 8765
-OPENVSCODE_SETTINGS_DIR = "/home/user/.openvscode-server/data/Machine"
-OPENVSCODE_SETTINGS_PATH = f"{OPENVSCODE_SETTINGS_DIR}/settings.json"
-OPENVSCODE_TOKEN_PATH = "/home/user/.ide_connection_token"
 OPENVSCODE_DEFAULT_SETTINGS: dict[str, object] = {
     "workbench.colorTheme": "Default Dark Modern",
     "window.autoDetectColorScheme": True,
@@ -141,7 +150,7 @@ class SandboxService:
             return self._ide_tokens[sandbox_id]
 
         try:
-            content = await self.provider.read_file(sandbox_id, OPENVSCODE_TOKEN_PATH)
+            content = await self.provider.read_file(sandbox_id, SANDBOX_IDE_TOKEN_PATH)
             if not content.is_binary and content.content:
                 token = content.content.strip()
                 self._ide_tokens[sandbox_id] = token
@@ -457,14 +466,14 @@ class SandboxService:
         zip_content = zip_buffer.getvalue()
         encoded_content = base64.b64encode(zip_content).decode("utf-8")
 
-        remote_zip_path = f"/home/user/_resources_{uuid.uuid4().hex[:8]}.zip"
+        remote_zip_path = f"{SANDBOX_HOME_DIR}/_resources_{uuid.uuid4().hex[:8]}.zip"
         temp_b64_path = f"{remote_zip_path}.b64tmp"
 
         try:
             await self.write_file(sandbox_id, temp_b64_path, encoded_content)
             decode_and_extract_cmd = (
                 f"base64 -d {shlex.quote(temp_b64_path)} > {shlex.quote(remote_zip_path)} && "
-                f"unzip -q -o {shlex.quote(remote_zip_path)} -d /home/user && "
+                f"unzip -q -o {shlex.quote(remote_zip_path)} -d {SANDBOX_HOME_DIR} && "
                 f"rm -f {shlex.quote(remote_zip_path)} {shlex.quote(temp_b64_path)}"
             )
             await self.execute_command(sandbox_id, decode_and_extract_cmd)
@@ -509,25 +518,28 @@ class SandboxService:
             )
             tg.create_task(
                 self.provider.add_secret(
-                    sandbox_id, "GIT_ASKPASS", "/home/user/.git-askpass.sh"
+                    sandbox_id, "GIT_ASKPASS", SANDBOX_GIT_ASKPASS_PATH
                 )
             )
 
         setup_cmd = (
-            f"echo -e '{script_content}' > /home/user/.git-askpass.sh && "
-            f"chmod +x /home/user/.git-askpass.sh"
+            f"echo -e '{script_content}' > {SANDBOX_GIT_ASKPASS_PATH} && "
+            f"chmod +x {SANDBOX_GIT_ASKPASS_PATH}"
         )
         await self.execute_command(sandbox_id, setup_cmd)
 
     async def _setup_anthropic_bridge(
-        self, sandbox_id: str, openrouter_api_key: str, skip_secret: bool = False
+        self,
+        sandbox_id: str,
+        openrouter_api_key: str | None = None,
+        skip_secret: bool = False,
     ) -> None:
-        if not skip_secret:
+        if openrouter_api_key and not skip_secret:
             await self.provider.add_secret(
                 sandbox_id, "OPENROUTER_API_KEY", openrouter_api_key
             )
 
-        start_cmd = "anthropic-bridge --port 3456 --host 0.0.0.0"
+        start_cmd = f"anthropic-bridge --port {ANTHROPIC_BRIDGE_PORT} --host {ANTHROPIC_BRIDGE_HOST}"
         start_result = await self.execute_command(
             sandbox_id, start_cmd, background=True
         )
@@ -537,16 +549,16 @@ class SandboxService:
         connection_token = secrets.token_urlsafe(32)
         self._ide_tokens[sandbox_id] = connection_token
 
-        await self.write_file(sandbox_id, OPENVSCODE_TOKEN_PATH, connection_token)
+        await self.write_file(sandbox_id, SANDBOX_IDE_TOKEN_PATH, connection_token)
 
         settings_content = json.dumps(OPENVSCODE_DEFAULT_SETTINGS, indent=2)
         escaped_settings = settings_content.replace("'", "'\"'\"'")
 
         setup_and_start_cmd = (
-            f"mkdir -p {OPENVSCODE_SETTINGS_DIR} && "
-            f"echo '{escaped_settings}' > {OPENVSCODE_SETTINGS_PATH} && "
+            f"mkdir -p {SANDBOX_IDE_CONFIG_DIR} && "
+            f"echo '{escaped_settings}' > {SANDBOX_IDE_SETTINGS_PATH} && "
             f"openvscode-server --host 0.0.0.0 --port {OPENVSCODE_PORT} "
-            f"--connection-token-file {OPENVSCODE_TOKEN_PATH} --disable-telemetry"
+            f"--connection-token-file {SANDBOX_IDE_TOKEN_PATH} --disable-telemetry"
         )
         await self.execute_command(sandbox_id, setup_and_start_cmd, background=True)
 
@@ -560,7 +572,7 @@ class SandboxService:
             "window.autoDetectColorScheme": False,
         }
         settings_content = json.dumps(settings, indent=2)
-        await self.write_file(sandbox_id, OPENVSCODE_SETTINGS_PATH, settings_content)
+        await self.write_file(sandbox_id, SANDBOX_IDE_SETTINGS_PATH, settings_content)
         logger.info("IDE theme updated to: %s", vscode_theme)
 
     async def _setup_claude_config(
@@ -573,24 +585,24 @@ class SandboxService:
             return
 
         if auto_compact_disabled:
-            claude_json_path = "/home/user/.claude.json"
             config: dict[str, Any] = {}
             try:
-                existing = await self.provider.read_file(sandbox_id, claude_json_path)
+                existing = await self.provider.read_file(
+                    sandbox_id, SANDBOX_CLAUDE_JSON_PATH
+                )
                 if not existing.is_binary and existing.content:
                     config = json.loads(existing.content)
             except Exception:
                 pass
             config["autoCompactEnabled"] = False
             await self.write_file(
-                sandbox_id, claude_json_path, json.dumps(config, indent=2)
+                sandbox_id, SANDBOX_CLAUDE_JSON_PATH, json.dumps(config, indent=2)
             )
 
         if attribution_disabled:
-            claude_dir = "/home/user/.claude"
-            settings_path = f"{claude_dir}/settings.json"
+            settings_path = f"{SANDBOX_CLAUDE_DIR}/settings.json"
             settings: dict[str, Any] = {}
-            await self.execute_command(sandbox_id, f"mkdir -p {claude_dir}")
+            await self.execute_command(sandbox_id, f"mkdir -p {SANDBOX_CLAUDE_DIR}")
             try:
                 existing = await self.provider.read_file(sandbox_id, settings_path)
                 if not existing.is_binary and existing.content:
@@ -602,10 +614,11 @@ class SandboxService:
                 sandbox_id, settings_path, json.dumps(settings, indent=2)
             )
 
-    async def _setup_codex_auth(self, sandbox_id: str, codex_auth_json: str) -> None:
-        codex_dir = "/home/user/.codex"
-        await self.execute_command(sandbox_id, f"mkdir -p {codex_dir}")
-        await self.write_file(sandbox_id, f"{codex_dir}/auth.json", codex_auth_json)
+    async def _setup_openai_auth(self, sandbox_id: str, openai_auth_json: str) -> None:
+        openai_dir = f"{SANDBOX_HOME_DIR}/.codex"
+        await self.execute_command(sandbox_id, f"mkdir -p {openai_dir}")
+        await self.write_file(sandbox_id, f"{openai_dir}/auth.json", openai_auth_json)
+        await self.execute_command(sandbox_id, f"sudo chown -R user:user {openai_dir}")
 
     async def initialize_sandbox(
         self,
@@ -618,7 +631,6 @@ class SandboxService:
         user_id: str | None = None,
         auto_compact_disabled: bool = False,
         attribution_disabled: bool = False,
-        codex_auth_json: str | None = None,
         custom_providers: list[CustomProviderDict] | None = None,
         is_fork: bool = False,
     ) -> None:
@@ -655,14 +667,18 @@ class SandboxService:
             if github_token:
                 tasks.append(self._setup_github_token(sandbox_id, github_token))
 
-            if codex_auth_json:
-                tasks.append(self._setup_codex_auth(sandbox_id, codex_auth_json))
+        openai_auth = self._get_openai_auth_from_provider(custom_providers)
+        if openai_auth:
+            tasks.append(self._setup_openai_auth(sandbox_id, openai_auth))
 
         openrouter_api_key = self._get_openrouter_api_key(custom_providers)
-        if openrouter_api_key:
+        openai_enabled = self._has_openai_provider(custom_providers)
+        if openrouter_api_key or openai_enabled:
             tasks.append(
                 self._setup_anthropic_bridge(
-                    sandbox_id, openrouter_api_key, skip_secret=is_fork
+                    sandbox_id,
+                    openrouter_api_key=openrouter_api_key,
+                    skip_secret=is_fork,
                 )
             )
 
@@ -678,7 +694,34 @@ class SandboxService:
             return None
         for provider in custom_providers:
             if (
-                provider.get("provider_type") == "openrouter"
+                provider.get("provider_type") == ProviderType.OPENROUTER.value
+                and provider.get("enabled", True)
+                and provider.get("auth_token")
+            ):
+                return provider["auth_token"]
+        return None
+
+    @staticmethod
+    def _has_openai_provider(
+        custom_providers: list[CustomProviderDict] | None,
+    ) -> bool:
+        if not custom_providers:
+            return False
+        return any(
+            provider.get("provider_type") == ProviderType.OPENAI.value
+            and provider.get("enabled", True)
+            for provider in custom_providers
+        )
+
+    @staticmethod
+    def _get_openai_auth_from_provider(
+        custom_providers: list[CustomProviderDict] | None,
+    ) -> str | None:
+        if not custom_providers:
+            return None
+        for provider in custom_providers:
+            if (
+                provider.get("provider_type") == ProviderType.OPENAI.value
                 and provider.get("enabled", True)
                 and provider.get("auth_token")
             ):
@@ -726,7 +769,7 @@ class SandboxService:
     async def clean_session_thinking_blocks(
         self, sandbox_id: str, session_id: str
     ) -> bool:
-        session_file = f"/home/user/.claude/projects/-home-user/{session_id}.jsonl"
+        session_file = f"{SANDBOX_CLAUDE_DIR}/projects/-home-user/{session_id}.jsonl"
         temp_file = f"{session_file}.tmp"
 
         # Valid Anthropic signatures are base64-encoded encrypted content, typically 200+ characters.

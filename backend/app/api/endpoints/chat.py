@@ -19,7 +19,9 @@ from app.constants import (
     REDIS_KEY_CHAT_STREAM,
     REDIS_KEY_CHAT_TASK,
     REDIS_KEY_PERMISSION_RESPONSE,
+    STREAM_STATUS_CANCELLED,
 )
+from app.models.db_models import StreamEventKind
 from app.core.celery import celery_app
 from app.core.config import get_settings
 from app.core.deps import get_chat_service
@@ -123,7 +125,10 @@ async def _replay_stream_backlog(
             "data": fields.get("payload", "") or "",
         }
         yield formatted
-        if formatted["event"] in {"complete", "error"}:
+        if formatted["event"] in {
+            StreamEventKind.COMPLETE.value,
+            StreamEventKind.ERROR.value,
+        }:
             return
 
 
@@ -142,8 +147,8 @@ async def _stream_live_redis_events(
     ):
         logger.info("Stream already cancelled for chat %s", chat_id)
         yield {
-            "event": "complete",
-            "data": json.dumps({"status": "cancelled"}),
+            "event": StreamEventKind.COMPLETE.value,
+            "data": json.dumps({"status": STREAM_STATUS_CANCELLED}),
         }
         return
 
@@ -151,8 +156,8 @@ async def _stream_live_redis_events(
         if cancel_event.is_set():
             logger.info("Stream cancelled for chat %s", chat_id)
             yield {
-                "event": "complete",
-                "data": json.dumps({"status": "cancelled"}),
+                "event": StreamEventKind.COMPLETE.value,
+                "data": json.dumps({"status": STREAM_STATUS_CANCELLED}),
             }
             return
 
@@ -185,7 +190,10 @@ async def _stream_live_redis_events(
             yield formatted
             last_id = entry_id
 
-            if formatted["event"] in {"complete", "error"}:
+            if formatted["event"] in {
+                StreamEventKind.COMPLETE.value,
+                StreamEventKind.ERROR.value,
+            }:
                 return
 
 
@@ -203,7 +211,10 @@ async def _create_event_stream(
             async for item in _replay_stream_backlog(redis, stream_name, min_id):
                 yield item
                 last_id = item["id"]
-                if item.get("event") in {"complete", "error"}:
+                if item.get("event") in {
+                    StreamEventKind.COMPLETE.value,
+                    StreamEventKind.ERROR.value,
+                }:
                     return
 
             if not last_id:
@@ -219,7 +230,10 @@ async def _create_event_stream(
                     redis, stream_name, chat_id, last_id, cancel_event
                 ):
                     yield event
-                    if event.get("event") in {"complete", "error"}:
+                    if event.get("event") in {
+                        StreamEventKind.COMPLETE.value,
+                        StreamEventKind.ERROR.value,
+                    }:
                         return
             finally:
                 monitor_task.cancel()
@@ -233,7 +247,7 @@ async def _create_event_stream(
             "Error in event stream for chat %s: %s", chat_id, exc, exc_info=True
         )
         yield {
-            "event": "error",
+            "event": StreamEventKind.ERROR.value,
             "data": json.dumps({"error": str(exc)}),
         }
 
