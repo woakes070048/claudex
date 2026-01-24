@@ -3,7 +3,7 @@ from enum import Enum
 from typing import Literal
 from uuid import UUID, uuid4
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 from app.models.types import JSONList
 from app.utils.validators import normalize_json_list
@@ -30,6 +30,18 @@ class CustomProvider(BaseModel):
     auth_token: str | None = None
     enabled: bool = True
     models: list[CustomProviderModel] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def normalize_model_ids(self) -> "CustomProvider":
+        if self.provider_type == ProviderType.OPENROUTER:
+            for model in self.models:
+                if not model.model_id.startswith("openrouter/"):
+                    model.model_id = f"openrouter/{model.model_id}"
+        elif self.provider_type == ProviderType.OPENAI:
+            for model in self.models:
+                if not model.model_id.startswith("openai/"):
+                    model.model_id = f"openai/{model.model_id}"
+        return self
 
 
 class CustomAgent(BaseModel):

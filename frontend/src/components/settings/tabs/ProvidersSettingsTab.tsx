@@ -110,7 +110,6 @@ export const ProvidersSettingsTab: React.FC<ProvidersSettingsTabProps> = ({
         <div className="space-y-3">
           {sortedProviders.map((provider) => {
             const isExpanded = expandedProviders.has(provider.id);
-            const enabledModels = provider.models.filter((m) => m.enabled);
 
             return (
               <div
@@ -156,16 +155,6 @@ export const ProvidersSettingsTab: React.FC<ProvidersSettingsTabProps> = ({
                         </span>
                       )}
                     </div>
-                    <p className="mt-0.5 text-xs text-text-tertiary dark:text-text-dark-tertiary">
-                      {enabledModels.length} model{enabledModels.length !== 1 ? 's' : ''} •{' '}
-                      {provider.provider_type === 'custom' && provider.base_url
-                        ? provider.base_url.replace(/^https?:\/\//, '').split('/')[0]
-                        : provider.provider_type === 'anthropic'
-                          ? 'api.anthropic.com'
-                          : provider.provider_type === 'openai'
-                            ? 'ChatGPT API'
-                            : 'openrouter.ai'}
-                    </p>
                   </div>
 
                   <div className="flex items-center gap-2">

@@ -89,7 +89,7 @@ function HeaderLogo({ theme, onClick }: { theme: string; onClick: () => void }) 
       <img
         src={theme === 'dark' ? logoWhite : logoDark}
         alt="claudex Logo"
-        className="h-14 w-14 object-contain transition-transform duration-200 group-hover:scale-110"
+        className="h-14 w-14 object-contain"
       />
     </Button>
   );

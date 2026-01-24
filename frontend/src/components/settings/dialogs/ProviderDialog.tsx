@@ -23,6 +23,7 @@ interface ProviderDialogProps {
 const DEFAULT_ANTHROPIC_PROVIDER: Omit<CustomProvider, 'id' | 'auth_token'> = {
   name: 'Anthropic',
   provider_type: 'anthropic',
+  base_url: null,
   enabled: true,
   models: [
     { model_id: 'claude-opus-4-5', name: 'Claude Opus 4.5', enabled: true },
@@ -34,24 +35,26 @@ const DEFAULT_ANTHROPIC_PROVIDER: Omit<CustomProvider, 'id' | 'auth_token'> = {
 const DEFAULT_OPENROUTER_PROVIDER: Omit<CustomProvider, 'id' | 'auth_token'> = {
   name: 'OpenRouter',
   provider_type: 'openrouter',
+  base_url: null,
   enabled: true,
   models: [
-    { model_id: 'openrouter/openai/gpt-5.2', name: 'GPT-5.2', enabled: true },
-    { model_id: 'openrouter/openai/gpt-5.1-codex', name: 'GPT-5.1 Codex', enabled: true },
-    { model_id: 'openrouter/x-ai/grok-code-fast-1', name: 'Grok Code Fast', enabled: true },
-    { model_id: 'openrouter/moonshotai/kimi-k2-thinking', name: 'Kimi K2 Thinking', enabled: true },
-    { model_id: 'openrouter/minimax/minimax-m2', name: 'Minimax M2', enabled: true },
-    { model_id: 'openrouter/deepseek/deepseek-v3.2', name: 'Deepseek V3.2', enabled: true },
+    { model_id: 'openai/gpt-5.2', name: 'GPT-5.2', enabled: true },
+    { model_id: 'openai/gpt-5.1-codex', name: 'GPT-5.1 Codex', enabled: true },
+    { model_id: 'x-ai/grok-code-fast-1', name: 'Grok Code Fast', enabled: true },
+    { model_id: 'moonshotai/kimi-k2-thinking', name: 'Kimi K2 Thinking', enabled: true },
+    { model_id: 'minimax/minimax-m2', name: 'Minimax M2', enabled: true },
+    { model_id: 'deepseek/deepseek-v3.2', name: 'Deepseek V3.2', enabled: true },
   ],
 };
 
 const DEFAULT_OPENAI_PROVIDER: Omit<CustomProvider, 'id' | 'auth_token'> = {
   name: 'OpenAI',
   provider_type: 'openai',
+  base_url: null,
   enabled: true,
   models: [
-    { model_id: 'openai/gpt-5.2-codex', name: 'GPT-5.2 Codex', enabled: true },
-    { model_id: 'openai/gpt-5.2', name: 'GPT-5.2', enabled: true },
+    { model_id: 'gpt-5.2-codex', name: 'GPT-5.2 Codex', enabled: true },
+    { model_id: 'gpt-5.2', name: 'GPT-5.2', enabled: true },
   ],
 };
 
