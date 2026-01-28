@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useCallback, ReactNode } from 'react';
+import { useEffect, useMemo, useCallback, useRef, ReactNode } from 'react';
 import { useParams, Navigate, useNavigate } from 'react-router-dom';
 import { useShallow } from 'zustand/react/shallow';
 import { Sidebar, useLayoutSidebar } from '@/components/layout';
@@ -44,11 +44,12 @@ export function ChatPage() {
 
   const { selectedModelId, selectModel } = useModelSelection();
 
-  const { permissionMode, thinkingMode, currentView, setCurrentView } = useUIStore(
+  const { permissionMode, thinkingMode, currentView, secondaryView, setCurrentView } = useUIStore(
     useShallow((state) => ({
       permissionMode: state.permissionMode,
       thinkingMode: state.thinkingMode,
       currentView: state.currentView,
+      secondaryView: state.secondaryView,
       setCurrentView: state.setCurrentView,
     })),
   );
@@ -69,11 +70,39 @@ export function ChatPage() {
     chatId,
   );
 
+  const prevViewsRef = useRef<{
+    current: ViewType | null;
+    secondary: ViewType | null;
+    sandboxId: string | null;
+  }>({
+    current: null,
+    secondary: null,
+    sandboxId: null,
+  });
+
   useEffect(() => {
-    if (currentView === 'editor' && currentChat?.sandbox_id) {
+    if (!currentChat?.sandbox_id) return;
+
+    const prev = prevViewsRef.current;
+    const switchedToEditorPrimary = currentView === 'editor' && prev.current !== 'editor';
+    const switchedToEditorSecondary = secondaryView === 'editor' && prev.secondary !== 'editor';
+    const isEditorActive = currentView === 'editor' || secondaryView === 'editor';
+    const switchedSandbox = prev.sandboxId !== currentChat.sandbox_id;
+
+    if (
+      switchedToEditorPrimary ||
+      switchedToEditorSecondary ||
+      (isEditorActive && switchedSandbox)
+    ) {
       refetchFilesMetadata();
     }
-  }, [currentView, currentChat?.sandbox_id, refetchFilesMetadata]);
+
+    prevViewsRef.current = {
+      current: currentView,
+      secondary: secondaryView,
+      sandboxId: currentChat.sandbox_id,
+    };
+  }, [currentView, secondaryView, currentChat?.sandbox_id, refetchFilesMetadata]);
 
   const { contextUsage, updateContextUsage } = useContextUsageState(chatId, currentChat);
 
